@@ -1,14 +1,13 @@
 import { StyleSheet, Text, View } from "react-native";
 
-export default function HomePage() {
+export default function CustomersPage() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>RentalEase Technician</Text>
+        <Text style={styles.title}>Customers</Text>
       </View>
       <View style={styles.main}>
-        <Text style={styles.welcomeText}>Welcome back!</Text>
-        <Text style={styles.subtitle}>Dashboard coming soon...</Text>
+        <Text style={styles.subtitle}>Customer management coming soon...</Text>
       </View>
     </View>
   );
@@ -36,13 +35,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,
-  },
-  welcomeText: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 8,
-    color: "#1D1D1F",
-    textAlign: "center",
   },
   subtitle: {
     fontSize: 18,

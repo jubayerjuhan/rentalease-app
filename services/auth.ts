@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import { deleteToken } from "./secureStore";
 
 const RAW_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined;
 
@@ -45,12 +46,15 @@ export async function technicianLogin(
   password: string
 ): Promise<{ technician: Technician; token: string }> {
   const baseUrl = getBaseUrl();
-  console.log("[technicianLogin] base", baseUrl, "email", email);
+  const payload = { email, password };
+  console.log("[technicianLogin] base", baseUrl);
+  console.log("[technicianLogin] payload", payload);
+  console.log("[technicianLogin] payload stringified", JSON.stringify(payload));
   try {
     const res = await fetch(`${baseUrl}/api/v1/technician/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(payload),
     });
     console.log("[technicianLogin] status", res.status);
     const json = await res.json();
@@ -116,5 +120,15 @@ export async function technicianResetPassword(
       stack: e?.stack,
     });
     throw new Error(e?.message || "Network request failed");
+  }
+}
+
+export async function technicianLogout(): Promise<void> {
+  try {
+    await deleteToken();
+    console.log('[technicianLogout] Token deleted successfully');
+  } catch (error) {
+    console.log('[technicianLogout] Error deleting token:', error);
+    throw error;
   }
 }

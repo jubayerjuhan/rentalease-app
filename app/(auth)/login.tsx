@@ -26,7 +26,9 @@ export default function LoginPage() {
     if (!validate()) return;
     try {
       setLoading(true);
-      const data = await technicianLogin(email.trim(), password);
+      const trimmedEmail = email.trim();
+      console.log('[LoginPage] Attempting login with:', { email: trimmedEmail, passwordLength: password.length });
+      const data = await technicianLogin(trimmedEmail, password);
       if (data?.token) await saveToken(data.token);
       router.replace('/(app)');
     } catch (e: any) {
