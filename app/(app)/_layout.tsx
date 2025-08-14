@@ -1,7 +1,13 @@
 import { Tabs } from "expo-router";
 import React from "react";
-import { View, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+} from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function AppLayout() {
   return (
@@ -9,18 +15,33 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: 'white',
+          backgroundColor: "white",
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
           borderTopWidth: 0,
-          elevation: 0,
-          shadowOpacity: 0,
           height: 90,
           paddingBottom: 25,
           paddingTop: 10,
+          position: "absolute",
+          ...Platform.select({
+            ios: {
+              shadowColor: "#000",
+              shadowOffset: {
+                width: 0,
+                height: -2,
+              },
+              shadowOpacity: 0.1,
+              shadowRadius: 8,
+            },
+            android: {
+              elevation: 8,
+            },
+          }),
         },
-        tabBarActiveTintColor: "#007AFF",
-        tabBarInactiveTintColor: "#8E8E93",
+        tabBarActiveTintColor: "#024974",
+        tabBarInactiveTintColor: "#9CA3AF",
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 10,
           fontWeight: "600",
           marginTop: 4,
         },
@@ -32,45 +53,39 @@ export default function AppLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "Dashboard",
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
-              <Ionicons 
-                name={focused ? "home" : "home-outline"} 
-                size={24} 
-                color={focused ? "#007AFF" : color} 
-              />
-            </View>
+            <MaterialCommunityIcons
+              name={focused ? "home" : "home-outline"}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="jobs"
         options={{
-          title: "Job",
+          title: "Available Jobs",
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
-              <Ionicons 
-                name={focused ? "list" : "list-outline"} 
-                size={24} 
-                color={focused ? "#007AFF" : color} 
-              />
-            </View>
+            <MaterialCommunityIcons
+              name={focused ? "briefcase" : "briefcase-outline"}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="customers"
         options={{
-          title: "Customers",
+          title: "Active Jobs",
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
-              <Ionicons 
-                name={focused ? "people" : "people-outline"} 
-                size={24} 
-                color={focused ? "#007AFF" : color} 
-              />
-            </View>
+            <MaterialCommunityIcons
+              name={focused ? "clipboard-check" : "clipboard-check-outline"}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
@@ -79,29 +94,14 @@ export default function AppLayout() {
         options={{
           title: "More",
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
-              <Ionicons 
-                name={focused ? "apps" : "apps-outline"} 
-                size={24} 
-                color={focused ? "#007AFF" : color} 
-              />
-            </View>
+            <MaterialCommunityIcons
+              name="dots-horizontal"
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  iconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  activeIconContainer: {
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-  },
-});
