@@ -30,42 +30,49 @@ export type Job = {
   id: string;
   job_id: string;
   jobType: string;
-  status: "Available" | "Pending" | "Scheduled" | "Completed" | "Cancelled";
-  priority: "Low" | "Medium" | "High" | "Critical";
+  status: "Available" | "Pending" | "Scheduled" | "In Progress" | "Active" | "Completed" | "Cancelled";
+  priority: "Low" | "Medium" | "High" | "Critical" | "Urgent";
   title?: string;
   description: string;
   property: {
-    address: {
+    address?: {
       street: string;
       suburb: string;
       state: string;
       postcode: string;
       fullAddress: string;
-    };
-    currentTenant: {
+    } | string;
+    currentTenant?: {
       name: string;
       email: string;
       phone: string;
     };
-    currentLandlord: {
+    currentLandlord?: {
       name: string;
       email: string;
       phone: string;
     };
-    propertyType: string;
-    region: string;
+    propertyType?: string;
+    region?: string;
+    agency?: {
+      _id: string;
+      companyName: string;
+      contactPerson: string;
+      email: string;
+      phone: string;
+    };
   };
   createdAt: string;
   dueDate: string;
-  estimatedDuration: number;
-  cost: {
+  estimatedDuration?: number;
+  cost?: {
     materialCost: number;
     laborCost: number;
     totalCost: number;
   };
   notes?: string;
   assignedTechnician?: any;
-  isOverdue: boolean;
+  isOverdue?: boolean;
 };
 
 export type JobsResponse = {
@@ -90,56 +97,67 @@ export type JobFilters = {
 };
 
 // Fetch available jobs
-export async function fetchAvailableJobs(filters: JobFilters = {}): Promise<JobsResponse> {
+export async function fetchAvailableJobs(
+  filters: JobFilters = {}
+): Promise<JobsResponse> {
   const baseUrl = getBaseUrl();
   const token = await getToken();
-  
+
   if (!token) {
     throw new Error("No authentication token found");
   }
-  
+
   // Build query parameters
   const queryParams = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
+    if (value !== undefined && value !== null && value !== "") {
       queryParams.append(key, value.toString());
     }
   });
-  
+
   // Default to pending jobs if no status filter specified
   if (!filters.status) {
-    queryParams.append('status', 'Pending');
+    queryParams.append("status", "Pending");
   }
-  
+
   // Default query parameters for available jobs
   if (!filters.limit) {
-    queryParams.append('limit', '50');
+    queryParams.append("limit", "50");
   }
   if (!filters.sortBy) {
-    queryParams.append('sortBy', 'dueDate');
+    queryParams.append("sortBy", "dueDate");
   }
   if (!filters.sortOrder) {
-    queryParams.append('sortOrder', 'asc');
+    queryParams.append("sortOrder", "asc");
   }
-  
+
   try {
-    const url = `${baseUrl}/api/v1/jobs/available-jobs${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    console.log('[fetchAvailableJobs] URL:', url);
-    
+    const url = `${baseUrl}/api/v1/jobs/available-jobs${
+      queryParams.toString() ? `?${queryParams.toString()}` : ""
+    }`;
+    console.log("[fetchAvailableJobs] URL:", url);
+
     const res = await fetch(url, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     });
-    
+
     const json = await res.json();
-    
+
+    console.log(json, "JSON Response...");
+    console.log(JSON.stringify(json), "JSON Stringify Response...");
+    console.log(
+      "First job structure:",
+      JSON.stringify(json.data?.jobs?.[0], null, 2)
+    );
+
     if (!res.ok) {
       throw new Error(json?.message || "Failed to fetch available jobs");
     }
-    
+
     return json.data;
   } catch (e: any) {
     console.log("[fetchAvailableJobs] error", {
@@ -152,40 +170,61 @@ export async function fetchAvailableJobs(filters: JobFilters = {}): Promise<Jobs
 }
 
 // Fetch technician's assigned jobs
-export async function fetchTechnicianJobs(filters: JobFilters = {}): Promise<JobsResponse> {
+export async function fetchTechnicianJobs(
+  filters: JobFilters = {}
+): Promise<JobsResponse> {
   const baseUrl = getBaseUrl();
   const token = await getToken();
-  
+
   if (!token) {
     throw new Error("No authentication token found");
   }
-  
+
   // Build query parameters
   const queryParams = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
+    if (value !== undefined && value !== null && value !== "") {
       queryParams.append(key, value.toString());
     }
   });
-  
+
+  // Set default pagination if not provided
+  if (!filters.page) {
+    queryParams.append("page", "1");
+  }
+  if (!filters.limit) {
+    queryParams.append("limit", "50");
+  }
+
   try {
-    const url = `${baseUrl}/api/v1/technicians/jobs${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    console.log('[fetchTechnicianJobs] URL:', url);
-    
+    const url = `${baseUrl}/api/v1/technicians/jobs${
+      queryParams.toString() ? `?${queryParams.toString()}` : ""
+    }`;
+    console.log("[fetchTechnicianJobs] URL:", url);
+
     const res = await fetch(url, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     });
-    
+
     const json = await res.json();
-    
+    console.log("[fetchTechnicianJobs] Response:", JSON.stringify(json, null, 2));
+
     if (!res.ok) {
+      // Handle specific authentication errors
+      if (res.status === 401) {
+        throw new Error("Authentication expired. Please login again.");
+      }
       throw new Error(json?.message || "Failed to fetch technician jobs");
     }
-    
+
+    if (json.status !== "success") {
+      throw new Error(json?.message || "API returned error status");
+    }
+
     return json.data;
   } catch (e: any) {
     console.log("[fetchTechnicianJobs] error", {
@@ -197,33 +236,33 @@ export async function fetchTechnicianJobs(filters: JobFilters = {}): Promise<Job
   }
 }
 
-// Accept a job
-export async function acceptJob(jobId: string): Promise<{ message: string }> {
+// Claim a job
+export async function claimJob(jobId: string): Promise<{ message: string }> {
   const baseUrl = getBaseUrl();
   const token = await getToken();
-  
+
   if (!token) {
     throw new Error("No authentication token found");
   }
-  
+
   try {
-    const res = await fetch(`${baseUrl}/api/v1/jobs/${jobId}/accept`, {
-      method: "POST",
+    const res = await fetch(`${baseUrl}/api/v1/jobs/${jobId}/claim`, {
+      method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     });
-    
+
     const json = await res.json();
-    
+
     if (!res.ok) {
-      throw new Error(json?.message || "Failed to accept job");
+      throw new Error(json?.message || "Failed to claim job");
     }
-    
+
     return json;
   } catch (e: any) {
-    console.log("[acceptJob] error", {
+    console.log("[claimJob] error", {
       name: e?.name,
       message: e?.message,
       stack: e?.stack,
@@ -236,27 +275,28 @@ export async function acceptJob(jobId: string): Promise<{ message: string }> {
 export async function fetchJobDetails(jobId: string): Promise<Job> {
   const baseUrl = getBaseUrl();
   const token = await getToken();
-  
+
   if (!token) {
     throw new Error("No authentication token found");
   }
-  
+
   try {
     const res = await fetch(`${baseUrl}/api/v1/jobs/${jobId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     });
-    
+
     const json = await res.json();
-    
+    console.log("[fetchJobDetails] Response:", JSON.stringify(json, null, 2));
+
     if (!res.ok) {
       throw new Error(json?.message || "Failed to fetch job details");
     }
-    
-    return json.data;
+
+    return json.data.job;
   } catch (e: any) {
     console.log("[fetchJobDetails] error", {
       name: e?.name,

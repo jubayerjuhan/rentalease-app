@@ -12,11 +12,17 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { PieChart, BarChart } from "react-native-chart-kit";
 import { fetchDashboardData, DashboardData } from "@services/dashboard";
+import { getProfile, TechnicianProfile } from "@services/profile";
+import { useTheme, Theme } from "../../contexts/ThemeContext";
 
 const screenWidth = Dimensions.get("window").width;
 
 export default function HomePage() {
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const { theme, isDark } = useTheme();
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(
+    null
+  );
+  const [profile, setProfile] = useState<TechnicianProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -24,9 +30,17 @@ export default function HomePage() {
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
+
+      // Load both dashboard data and profile in parallel
+      const [dashboardData, profileData] = await Promise.all([
+        fetchDashboardData(),
+        getProfile().catch(() => null), // Don't fail if profile can't be loaded
+      ]);
       
-      const data = await fetchDashboardData();
-      setDashboardData(data);
+      setDashboardData(dashboardData);
+      if (profileData) {
+        setProfile(profileData);
+      }
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to load dashboard data");
     } finally {
@@ -43,10 +57,12 @@ export default function HomePage() {
     loadDashboardData(true);
   };
 
+  const styles = createStyles(theme);
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#024974" />
+        <ActivityIndicator size="large" color={theme.primary} />
         <Text style={styles.loadingText}>Loading dashboard...</Text>
       </View>
     );
@@ -61,24 +77,26 @@ export default function HomePage() {
   }
 
   // Prepare chart data
-  const pieChartData = dashboardData.jobStatusDistribution.map((item, index) => ({
-    name: item.status,
-    count: item.count,
-    color: getStatusColor(item.status, index),
-    legendFontColor: "#1F2937",
-    legendFontSize: 12,
-  }));
+  const pieChartData = dashboardData.jobStatusDistribution.map(
+    (item, index) => ({
+      name: item.status,
+      count: item.count,
+      color: getStatusColor(item.status, index),
+      legendFontColor: theme.text,
+      legendFontSize: 12,
+    })
+  );
 
   const barChartData = {
-    labels: dashboardData.weeklyProgress.map(item => item.day),
+    labels: dashboardData.weeklyProgress.map((item) => item.day),
     datasets: [
       {
-        data: dashboardData.weeklyProgress.map(item => item.completed),
-        color: (opacity = 1) => `rgba(2, 73, 116, ${opacity})`,
+        data: dashboardData.weeklyProgress.map((item) => item.completed),
+        color: () => theme.primary,
       },
       {
-        data: dashboardData.weeklyProgress.map(item => item.scheduled),
-        color: (opacity = 1) => `rgba(108, 196, 140, ${opacity})`,
+        data: dashboardData.weeklyProgress.map((item) => item.scheduled),
+        color: () => theme.success,
       },
     ],
   };
@@ -90,14 +108,16 @@ export default function HomePage() {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          colors={["#024974"]}
+          colors={[theme.primary]}
         />
       }
     >
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Dashboard</Text>
-        <Text style={styles.subtitle}>Welcome back!</Text>
+        <Text style={styles.subtitle}>
+          Welcome back{profile?.firstName ? `, ${profile.firstName}` : ''}!
+        </Text>
       </View>
 
       {/* Quick Stats */}
@@ -106,25 +126,29 @@ export default function HomePage() {
           title="Total Jobs"
           value={dashboardData.quickStats.totalJobs}
           icon="briefcase"
-          color="#024974"
+          color={theme.primary}
+          theme={theme}
         />
         <StatCard
           title="Active Jobs"
           value={dashboardData.quickStats.activeJobs}
           icon="clock-outline"
-          color="#6CC48C"
+          color={theme.success}
+          theme={theme}
         />
         <StatCard
           title="Completed"
           value={dashboardData.quickStats.completedJobs}
           icon="check-circle"
-          color="#10B981"
+          color={theme.success}
+          theme={theme}
         />
         <StatCard
           title="Overdue"
           value={dashboardData.quickStats.overdueJobs}
           icon="alert-circle"
-          color="#EF4444"
+          color={theme.error}
+          theme={theme}
         />
       </View>
 
@@ -136,7 +160,7 @@ export default function HomePage() {
           width={screenWidth - 32}
           height={220}
           chartConfig={{
-            color: (opacity = 1) => `rgba(2, 73, 116, ${opacity})`,
+            color: () => theme.primary,
           }}
           accessor="count"
           backgroundColor="transparent"
@@ -154,13 +178,15 @@ export default function HomePage() {
             data={barChartData}
             width={Math.max(screenWidth - 32, 400)}
             height={220}
+            yAxisLabel=""
+            yAxisSuffix=""
             chartConfig={{
-              backgroundColor: "#ffffff",
-              backgroundGradientFrom: "#ffffff",
-              backgroundGradientTo: "#ffffff",
+              backgroundColor: theme.surface,
+              backgroundGradientFrom: theme.surface,
+              backgroundGradientTo: theme.surface,
               decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(2, 73, 116, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(31, 41, 55, ${opacity})`,
+              color: () => theme.primary,
+              labelColor: () => theme.text,
               style: {
                 borderRadius: 16,
               },
@@ -174,11 +200,15 @@ export default function HomePage() {
         </ScrollView>
         <View style={styles.chartLegend}>
           <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: "#024974" }]} />
+            <View
+              style={[styles.legendColor, { backgroundColor: theme.primary }]}
+            />
             <Text style={styles.legendText}>Completed</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: "#6CC48C" }]} />
+            <View
+              style={[styles.legendColor, { backgroundColor: theme.success }]}
+            />
             <Text style={styles.legendText}>Scheduled</Text>
           </View>
         </View>
@@ -189,26 +219,50 @@ export default function HomePage() {
         <Text style={styles.sectionTitle}>Payment Overview</Text>
         <View style={styles.paymentGrid}>
           <View style={styles.paymentCard}>
-            <MaterialCommunityIcons name="cash-multiple" size={24} color="#024974" />
+            <MaterialCommunityIcons
+              name="cash-multiple"
+              size={24}
+              color={theme.primary}
+            />
             <Text style={styles.paymentLabel}>Total Amount</Text>
-            <Text style={styles.paymentValue}>${dashboardData.paymentStats.totalAmount}</Text>
+            <Text style={styles.paymentValue}>
+              ${dashboardData.paymentStats.totalAmount}
+            </Text>
           </View>
           <View style={styles.paymentCard}>
-            <MaterialCommunityIcons name="clock-outline" size={24} color="#F59E0B" />
+            <MaterialCommunityIcons
+              name="clock-outline"
+              size={24}
+              color={theme.warning}
+            />
             <Text style={styles.paymentLabel}>Pending Amount</Text>
-            <Text style={styles.paymentValue}>${dashboardData.paymentStats.pendingAmount}</Text>
+            <Text style={styles.paymentValue}>
+              ${dashboardData.paymentStats.pendingAmount}
+            </Text>
           </View>
         </View>
         <View style={styles.paymentGrid}>
           <View style={styles.paymentCard}>
-            <MaterialCommunityIcons name="file-document" size={24} color="#10B981" />
+            <MaterialCommunityIcons
+              name="file-document"
+              size={24}
+              color={theme.success}
+            />
             <Text style={styles.paymentLabel}>Total Payments</Text>
-            <Text style={styles.paymentValue}>{dashboardData.paymentStats.totalPayments}</Text>
+            <Text style={styles.paymentValue}>
+              {dashboardData.paymentStats.totalPayments}
+            </Text>
           </View>
           <View style={styles.paymentCard}>
-            <MaterialCommunityIcons name="file-clock" size={24} color="#EF4444" />
+            <MaterialCommunityIcons
+              name="file-clock"
+              size={24}
+              color={theme.error}
+            />
             <Text style={styles.paymentLabel}>Pending Payments</Text>
-            <Text style={styles.paymentValue}>{dashboardData.paymentStats.pendingPayments}</Text>
+            <Text style={styles.paymentValue}>
+              {dashboardData.paymentStats.pendingPayments}
+            </Text>
           </View>
         </View>
       </View>
@@ -221,18 +275,23 @@ export default function HomePage() {
             <View style={styles.jobInfo}>
               <Text style={styles.jobId}>{job.job_id}</Text>
               <Text style={styles.jobType}>{job.jobType}</Text>
-              <Text style={styles.jobProperty}>{job.property}</Text>
+              <Text style={styles.jobProperty}>
+                {typeof job.property === "string"
+                  ? job.property
+                  : job.property?.address?.fullAddress ||
+                    "Property address not available"}
+              </Text>
             </View>
             <View style={styles.jobStatus}>
-              <View style={[
-                styles.statusBadge,
-                { backgroundColor: getStatusBadgeColor(job.status) }
-              ]}>
-                <Text style={styles.statusText}>{job.status}</Text>
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: getStatusBadgeColor(job.status, theme, isDark) },
+                ]}
+              >
+                <Text style={[styles.statusText, { color: theme.text }]}>{job.status}</Text>
               </View>
-              <Text style={styles.jobDate}>
-                {formatDate(job.dueDate)}
-              </Text>
+              <Text style={styles.jobDate}>{formatDate(job.dueDate)}</Text>
             </View>
           </View>
         ))}
@@ -249,78 +308,100 @@ export default function HomePage() {
 }
 
 // Helper Components
-const StatCard = ({ title, value, icon, color }: {
+const StatCard = ({
+  title,
+  value,
+  icon,
+  color,
+  theme,
+}: {
   title: string;
   value: number;
   icon: string;
   color: string;
-}) => (
-  <View style={styles.statCard}>
-    <MaterialCommunityIcons name={icon as any} size={24} color={color} />
-    <Text style={styles.statValue}>{value}</Text>
-    <Text style={styles.statTitle}>{title}</Text>
-  </View>
-);
+  theme: Theme;
+}) => {
+  const styles = createStyles(theme);
+  return (
+    <View style={styles.statCard}>
+      <MaterialCommunityIcons name={icon as any} size={24} color={color} />
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statTitle}>{title}</Text>
+    </View>
+  );
+};
 
 // Helper Functions
 const getStatusColor = (status: string, index: number) => {
-  const colors = {
-    "Completed": "#10B981",
-    "Active": "#F59E0B", 
-    "Scheduled": "#3B82F6",
-    "Overdue": "#EF4444",
+  const colors: Record<string, string> = {
+    Completed: "#22C55E",
+    Active: "#F59E0B", 
+    Scheduled: "#3B82F6",
+    Overdue: "#EF4444",
   };
   return colors[status] || `hsl(${index * 60}, 70%, 50%)`;
 };
 
-const getStatusBadgeColor = (status: string) => {
-  const colors = {
-    "Completed": "#D1FAE5",
-    "Active": "#FEF3C7",
-    "Scheduled": "#DBEAFE", 
-    "Overdue": "#FEE2E2",
-  };
-  return colors[status] || "#F3F4F6";
+const getStatusBadgeColor = (status: string, theme: Theme, isDark: boolean) => {
+  if (isDark) {
+    // Dark mode colors with better contrast
+    const colors: Record<string, string> = {
+      Completed: theme.success + "30", // 30% opacity
+      Active: theme.warning + "30",
+      Scheduled: theme.info + "30", 
+      Overdue: theme.error + "30",
+    };
+    return colors[status] || theme.surface;
+  } else {
+    // Light mode colors
+    const colors: Record<string, string> = {
+      Completed: "#D1FAE5",
+      Active: "#FEF3C7",
+      Scheduled: "#DBEAFE",
+      Overdue: "#FEE2E2",
+    };
+    return colors[status] || "#F3F4F6";
+  }
 };
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric' 
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
   });
 };
 
 const formatDateTime = (dateString: string) => {
   const date = new Date(dateString);
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.background,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: theme.background,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6B7280',
+    color: theme.textSecondary,
   },
   errorText: {
     fontSize: 16,
-    color: '#EF4444',
-    textAlign: 'center',
+    color: theme.error,
+    textAlign: "center",
   },
   header: {
     paddingHorizontal: 16,
@@ -329,28 +410,28 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#012D4F',
+    fontWeight: "bold",
+    color: theme.text,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: theme.textSecondary,
   },
   quickStatsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     paddingHorizontal: 16,
     marginBottom: 20,
   },
   statCard: {
-    backgroundColor: 'white',
+    backgroundColor: theme.surface,
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
     width: (screenWidth - 48) / 2,
     margin: 4,
-    shadowColor: '#000',
+    shadowColor: theme.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -361,23 +442,23 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: "bold",
+    color: theme.text,
     marginTop: 8,
   },
   statTitle: {
     fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
+    color: theme.textSecondary,
+    textAlign: "center",
     marginTop: 4,
   },
   chartContainer: {
-    backgroundColor: 'white',
+    backgroundColor: theme.surface,
     marginHorizontal: 16,
     marginBottom: 20,
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: theme.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -388,26 +469,26 @@ const styles = StyleSheet.create({
   },
   chartTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: theme.text,
     marginBottom: 8,
   },
   chartSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: theme.textSecondary,
     marginBottom: 16,
   },
   chart: {
     borderRadius: 16,
   },
   chartLegend: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: 16,
   },
   legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginHorizontal: 16,
   },
   legendColor: {
@@ -418,21 +499,21 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: theme.textSecondary,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: theme.text,
     marginBottom: 16,
   },
   paymentContainer: {
-    backgroundColor: 'white',
+    backgroundColor: theme.surface,
     marginHorizontal: 16,
     marginBottom: 20,
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: theme.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -442,36 +523,36 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   paymentGrid: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 12,
   },
   paymentCard: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     padding: 12,
     marginHorizontal: 6,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.background,
     borderRadius: 8,
   },
   paymentLabel: {
     fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
+    color: theme.textSecondary,
+    textAlign: "center",
     marginTop: 8,
   },
   paymentValue: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: "bold",
+    color: theme.text,
     marginTop: 4,
   },
   recentJobsContainer: {
-    backgroundColor: 'white',
+    backgroundColor: theme.surface,
     marginHorizontal: 16,
-    marginBottom: 20,
+    marginBottom: 110,
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: theme.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -481,31 +562,31 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   jobCard: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: theme.divider,
   },
   jobInfo: {
     flex: 1,
   },
   jobId: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: theme.text,
   },
   jobType: {
     fontSize: 14,
-    color: '#6B7280',
+    color: theme.textSecondary,
     marginTop: 2,
   },
   jobProperty: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: theme.textTertiary,
     marginTop: 2,
   },
   jobStatus: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -514,21 +595,21 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '500',
-    color: '#1F2937',
+    fontWeight: "500",
+    color: theme.text,
   },
   jobDate: {
     fontSize: 12,
-    color: '#6B7280',
+    color: theme.textSecondary,
     marginTop: 4,
   },
   footer: {
     paddingHorizontal: 16,
     paddingVertical: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   lastUpdated: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: theme.textTertiary,
   },
 });

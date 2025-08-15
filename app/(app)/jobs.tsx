@@ -13,7 +13,9 @@ import {
   Pressable,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { fetchAvailableJobs, acceptJob, Job, JobFilters } from "@services/jobs";
+import { useRouter } from "expo-router";
+import { fetchAvailableJobs, claimJob, Job, JobFilters } from "@services/jobs";
+import { useTheme } from "../../contexts/ThemeContext";
 
 // Helper Functions
 const getPriorityColor = (priority: string) => {
@@ -51,6 +53,8 @@ const formatDate = (dateString: string) => {
 };
 
 export default function JobsPage() {
+  const router = useRouter();
+  const { theme, isDark } = useTheme();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -66,6 +70,7 @@ export default function JobsPage() {
     hasPrevPage: false,
   });
   const [loadingMore, setLoadingMore] = useState(false);
+  const [claimingJobs, setClaimingJobs] = useState<Set<string>>(new Set());
 
   const loadJobs = async (isRefresh = false, filters: JobFilters = {}) => {
     try {
@@ -115,21 +120,33 @@ export default function JobsPage() {
     }
   };
 
-  const handleAcceptJob = async (jobId: string) => {
+  const handleClaimJob = async (jobId: string) => {
+    if (claimingJobs.has(jobId)) return;
+    
     Alert.alert(
-      "Accept Job",
-      "Are you sure you want to accept this job?",
+      "Claim Job",
+      "Are you sure you want to claim this job?",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Accept",
+          text: "Claim",
           onPress: async () => {
             try {
-              await acceptJob(jobId);
-              Alert.alert("Success", "Job accepted successfully!");
+              setClaimingJobs(prev => new Set(prev).add(jobId));
+              console.log("[JobsPage] Claiming job:", jobId);
+              await claimJob(jobId);
+              console.log("[JobsPage] Job claimed successfully");
+              Alert.alert("Success", "Job claimed successfully!");
               onRefresh();
             } catch (error: any) {
-              Alert.alert("Error", error.message || "Failed to accept job");
+              console.log("[JobsPage] Error claiming job:", error);
+              Alert.alert("Error", error.message || "Failed to claim job");
+            } finally {
+              setClaimingJobs(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(jobId);
+                return newSet;
+              });
             }
           },
         },
@@ -152,12 +169,12 @@ export default function JobsPage() {
   };
 
   const renderJobCard = ({ item }: { item: Job }) => (
-    <View style={styles.jobCard}>
+    <View style={[styles.jobCard, { backgroundColor: theme.card, borderLeftColor: theme.primary }]}>
       <View style={styles.jobHeader}>
         <View style={styles.jobTitleRow}>
-          <View style={styles.jobIdContainer}>
-            <MaterialCommunityIcons name="briefcase-outline" size={16} color="#024974" />
-            <Text style={styles.jobId}>{item.job_id}</Text>
+          <View style={[styles.jobIdContainer, { backgroundColor: isDark ? theme.primary + '20' : '#F0F9FF' }]}>
+            <MaterialCommunityIcons name="briefcase-outline" size={16} color={theme.primary} />
+            <Text style={[styles.jobId, { color: theme.primary }]}>{item.job_id}</Text>
           </View>
           <View style={[
             styles.priorityBadge,
@@ -166,54 +183,53 @@ export default function JobsPage() {
             <Text style={styles.priorityText}>{item.priority}</Text>
           </View>
         </View>
-        <Text style={styles.jobTitle}>{item.title || item.description}</Text>
+        <Text style={[styles.jobTitle, { color: theme.text }]}>{item.title || item.description}</Text>
         <View style={styles.jobTypeContainer}>
           <MaterialCommunityIcons 
             name={getJobTypeIcon(item.jobType)} 
             size={16} 
-            color="#10B981" 
+            color={theme.success} 
           />
-          <Text style={styles.jobType}>{item.jobType}</Text>
+          <Text style={[styles.jobType, { color: theme.success }]}>{item.jobType}</Text>
         </View>
       </View>
 
       <View style={styles.jobDetails}>
         <View style={styles.detailRow}>
-          <MaterialCommunityIcons name="map-marker" size={16} color="#6B7280" />
-          <Text style={styles.detailText}>
+          <MaterialCommunityIcons name="map-marker" size={16} color={theme.textSecondary} />
+          <Text style={[styles.detailText, { color: theme.textSecondary }]}>
             {item.property.address.fullAddress}
           </Text>
         </View>
         
         <View style={styles.detailRow}>
-          <MaterialCommunityIcons name="clock-outline" size={16} color="#6B7280" />
-          <Text style={styles.detailText}>
+          <MaterialCommunityIcons name="clock-outline" size={16} color={theme.textSecondary} />
+          <Text style={[styles.detailText, { color: theme.textSecondary }]}>
             Due: {formatDate(item.dueDate)}
           </Text>
         </View>
 
+
         <View style={styles.detailRow}>
-          <MaterialCommunityIcons name="clock-outline" size={16} color="#6B7280" />
-          <Text style={styles.detailText}>
-            Duration: {item.estimatedDuration}h estimated
-          </Text>
+          <MaterialCommunityIcons name="account" size={16} color={theme.textSecondary} />
+          <Text style={[styles.detailText, { color: theme.textSecondary }]}>{item.property.currentTenant.name}</Text>
         </View>
 
         <View style={styles.detailRow}>
-          <MaterialCommunityIcons name="account" size={16} color="#6B7280" />
-          <Text style={styles.detailText}>{item.property.currentTenant.name}</Text>
+          <MaterialCommunityIcons name="office-building" size={16} color={theme.textSecondary} />
+          <Text style={[styles.detailText, { color: theme.textSecondary }]}>{item.property.currentLandlord.name}</Text>
         </View>
       </View>
 
       {item.description && (
-        <Text style={styles.jobDescription} numberOfLines={2}>
+        <Text style={[styles.jobDescription, { color: theme.textSecondary }]} numberOfLines={2}>
           {item.description}
         </Text>
       )}
 
       {item.notes && (
         <View style={styles.notesContainer}>
-          <Text style={styles.notesText} numberOfLines={2}>
+          <Text style={[styles.notesText, { color: theme.textSecondary }]} numberOfLines={2}>
             {item.notes}
           </Text>
         </View>
@@ -221,16 +237,30 @@ export default function JobsPage() {
 
       <View style={styles.jobActions}>
         <TouchableOpacity
-          style={styles.acceptButton}
-          onPress={() => handleAcceptJob(item.id)}
+          style={[
+            styles.claimButton, 
+            { backgroundColor: theme.primary },
+            claimingJobs.has(item.id) && { backgroundColor: theme.disabled, opacity: 0.7 }
+          ]}
+          onPress={() => handleClaimJob(item.id)}
+          disabled={claimingJobs.has(item.id)}
         >
-          <MaterialCommunityIcons name="check" size={20} color="white" />
-          <Text style={styles.acceptButtonText}>Accept Job</Text>
+          {claimingJobs.has(item.id) ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <MaterialCommunityIcons name="account-plus" size={20} color="white" />
+          )}
+          <Text style={styles.claimButtonText}>
+            {claimingJobs.has(item.id) ? "Claiming..." : "Claim Job"}
+          </Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.viewButton}>
-          <MaterialCommunityIcons name="eye" size={20} color="#024974" />
-          <Text style={styles.viewButtonText}>View Details</Text>
+        <TouchableOpacity 
+          style={[styles.viewButton, { backgroundColor: theme.surface, borderColor: theme.primary }]}
+          onPress={() => router.push(`/job-details/${item.id}`)}
+        >
+          <MaterialCommunityIcons name="eye" size={20} color={theme.primary} />
+          <Text style={[styles.viewButtonText, { color: theme.primary }]}>View Details</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -238,9 +268,9 @@ export default function JobsPage() {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <MaterialCommunityIcons name="briefcase-search" size={64} color="#9CA3AF" />
-      <Text style={styles.emptyTitle}>No Available Jobs</Text>
-      <Text style={styles.emptyText}>
+      <MaterialCommunityIcons name="briefcase-search" size={64} color={theme.textTertiary} />
+      <Text style={[styles.emptyTitle, { color: theme.text }]}>No Available Jobs</Text>
+      <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
         {searchQuery ? "Try adjusting your search or filters" : "Check back later for new opportunities"}
       </Text>
     </View>
@@ -249,33 +279,21 @@ export default function JobsPage() {
   const filterOptions = ["All", "High Priority", "Medium Priority", "Smoke", "Gas", "Electrical"];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Text style={styles.title}>Available Jobs</Text>
-          <Text style={styles.subtitle}>{pagination.totalItems} jobs available</Text>
-        </View>
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{jobs.length}</Text>
-            <Text style={styles.statLabel}>Loaded</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{pagination.currentPage}</Text>
-            <Text style={styles.statLabel}>of {pagination.totalPages}</Text>
-          </View>
-        </View>
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+        <Text style={[styles.title, { color: theme.text }]}>Available Jobs</Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{pagination.totalItems} jobs available</Text>
       </View>
 
       {/* Search and Filter */}
       <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
-          <MaterialCommunityIcons name="magnify" size={20} color="#6B7280" />
+        <View style={[styles.searchInputContainer, { backgroundColor: theme.surface }]}>
+          <MaterialCommunityIcons name="magnify" size={20} color={theme.textSecondary} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: theme.text }]}
             placeholder="Search jobs..."
+            placeholderTextColor={theme.placeholder}
             value={searchQuery}
             onChangeText={setSearchQuery}
             onSubmitEditing={onSearch}
@@ -284,30 +302,30 @@ export default function JobsPage() {
         </View>
         
         <TouchableOpacity
-          style={styles.filterButton}
+          style={[styles.filterButton, { backgroundColor: theme.surface }]}
           onPress={() => setShowFilterModal(true)}
         >
-          <MaterialCommunityIcons name="filter" size={20} color="#024974" />
-          <Text style={styles.filterButtonText}>{selectedFilter}</Text>
+          <MaterialCommunityIcons name="filter" size={20} color={theme.primary} />
+          <Text style={[styles.filterButtonText, { color: theme.primary }]}>{selectedFilter}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Jobs List */}
       {loading && jobs.length === 0 ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#024974" />
-          <Text style={styles.loadingText}>Loading jobs...</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading jobs...</Text>
         </View>
       ) : (
         <FlatList
           data={jobs}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => `${item.id}-${item.job_id}-${index}`}
           renderItem={renderJobCard}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={["#024974"]}
+              colors={[theme.primary]}
             />
           }
           ListEmptyComponent={renderEmptyState}
@@ -318,17 +336,17 @@ export default function JobsPage() {
           ListFooterComponent={
             loadingMore ? (
               <View style={styles.loadingMore}>
-                <ActivityIndicator size="small" color="#024974" />
-                <Text style={styles.loadingMoreText}>Loading more jobs...</Text>
+                <ActivityIndicator size="small" color={theme.primary} />
+                <Text style={[styles.loadingMoreText, { color: theme.textSecondary }]}>Loading more jobs...</Text>
               </View>
             ) : pagination.hasNextPage ? (
-              <TouchableOpacity style={styles.loadMoreButton} onPress={onLoadMore}>
-                <Text style={styles.loadMoreText}>Load More Jobs</Text>
-                <MaterialCommunityIcons name="chevron-down" size={20} color="#024974" />
+              <TouchableOpacity style={[styles.loadMoreButton, { backgroundColor: theme.surface, borderColor: theme.primary }]} onPress={onLoadMore}>
+                <Text style={[styles.loadMoreText, { color: theme.primary }]}>Load More Jobs</Text>
+                <MaterialCommunityIcons name="chevron-down" size={20} color={theme.primary} />
               </TouchableOpacity>
             ) : jobs.length > 0 ? (
               <View style={styles.endOfList}>
-                <Text style={styles.endOfListText}>You've reached the end</Text>
+                <Text style={[styles.endOfListText, { color: theme.textTertiary }]}>You've reached the end</Text>
               </View>
             ) : null
           }
@@ -342,26 +360,27 @@ export default function JobsPage() {
         animationType="fade"
         onRequestClose={() => setShowFilterModal(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowFilterModal(false)}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Filter Jobs</Text>
+        <Pressable style={[styles.modalOverlay, { backgroundColor: theme.overlay }]} onPress={() => setShowFilterModal(false)}>
+          <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Filter Jobs</Text>
             {filterOptions.map((option) => (
               <TouchableOpacity
                 key={option}
                 style={[
                   styles.filterOption,
-                  selectedFilter === option && styles.selectedFilterOption
+                  selectedFilter === option && { backgroundColor: isDark ? theme.primary + '20' : '#F0F9FF' }
                 ]}
                 onPress={() => applyFilter(option)}
               >
                 <Text style={[
                   styles.filterOptionText,
-                  selectedFilter === option && styles.selectedFilterOptionText
+                  { color: theme.text },
+                  selectedFilter === option && { color: theme.primary, fontWeight: '500' }
                 ]}>
                   {option}
                 </Text>
                 {selectedFilter === option && (
-                  <MaterialCommunityIcons name="check" size={20} color="#024974" />
+                  <MaterialCommunityIcons name="check" size={20} color={theme.primary} />
                 )}
               </TouchableOpacity>
             ))}
@@ -385,35 +404,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  headerContent: {
-    marginBottom: 16,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#024974',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: '#E5E7EB',
-    marginHorizontal: 20,
-  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -427,6 +417,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
+    marginTop: 16,
     marginBottom: 16,
     gap: 12,
   },
@@ -619,7 +610,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-  acceptButton: {
+  claimButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -628,7 +619,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
   },
-  acceptButtonText: {
+  claimButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',

@@ -8,24 +8,28 @@ import {
   Platform,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useTheme } from "../../contexts/ThemeContext";
 
 export default function AppLayout() {
+  const { theme } = useTheme();
+  
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: "white",
+          backgroundColor: theme.surface,
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
           borderTopWidth: 0,
           height: 90,
           paddingBottom: 25,
           paddingTop: 10,
+          paddingHorizontal: 0,
           position: "absolute",
           ...Platform.select({
             ios: {
-              shadowColor: "#000",
+              shadowColor: theme.shadow,
               shadowOffset: {
                 width: 0,
                 height: -2,
@@ -38,15 +42,20 @@ export default function AppLayout() {
             },
           }),
         },
-        tabBarActiveTintColor: "#024974",
-        tabBarInactiveTintColor: "#9CA3AF",
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.textTertiary,
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: "600",
           marginTop: 4,
         },
         tabBarIconStyle: {
-          marginBottom: -2,
+          marginBottom: 0,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 4,
+          paddingHorizontal: 2,
+          flex: 1,
         },
       }}
     >
@@ -77,9 +86,9 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
-        name="customers"
+        name="my-jobs"
         options={{
-          title: "Active Jobs",
+          title: "My Jobs",
           tabBarIcon: ({ color, focused }) => (
             <MaterialCommunityIcons
               name={focused ? "clipboard-check" : "clipboard-check-outline"}
@@ -93,7 +102,7 @@ export default function AppLayout() {
         name="more"
         options={{
           title: "More",
-          tabBarIcon: ({ color, focused }) => (
+          tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons
               name="dots-horizontal"
               size={24}

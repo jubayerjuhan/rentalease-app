@@ -1,6 +1,7 @@
-import React from 'react';
-import { ActivityIndicator, ColorValue, GestureResponderEvent, Image, Pressable, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, ColorValue, GestureResponderEvent, Image, Pressable, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle, TouchableOpacity } from 'react-native';
 import { useColorScheme } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../theme';
 
 export function useTheme() {
@@ -67,6 +68,49 @@ export function InputField(props: TextInputProps & { error?: string }) {
   );
 }
 
+export function PasswordInputField(props: Omit<TextInputProps, 'secureTextEntry'> & { error?: string }) {
+  const { colors } = useTheme();
+  const { error, style, placeholderTextColor, ...rest } = props as any;
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
+  const togglePasswordVisibility = () => {
+    setIsPasswordVisible(!isPasswordVisible);
+  };
+
+  return (
+    <View style={{ width: '100%' }}>
+      <View style={styles.passwordContainer}>
+        <TextInput
+          placeholderTextColor={placeholderTextColor || colors.placeholder}
+          style={[
+            styles.input,
+            styles.passwordInput,
+            {
+              backgroundColor: colors.inputBg,
+              borderColor: error ? colors.danger : colors.inputBorder,
+              color: colors.text,
+            },
+            style,
+          ]}
+          secureTextEntry={!isPasswordVisible}
+          {...rest}
+        />
+        <TouchableOpacity
+          style={styles.eyeButton}
+          onPress={togglePasswordVisibility}
+        >
+          <MaterialCommunityIcons
+            name={isPasswordVisible ? 'eye-off' : 'eye'}
+            size={20}
+            color={colors.placeholder}
+          />
+        </TouchableOpacity>
+      </View>
+      {!!error && <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>}
+    </View>
+  );
+}
+
 export function ScreenContainer({ children }: { children: React.ReactNode }) {
   const { colors } = useTheme();
   return <View style={[styles.container, { backgroundColor: colors.background }]}>{children}</View>;
@@ -127,6 +171,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 12,
   },
   buttonText: {
     fontSize: 16,
@@ -141,9 +186,27 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 16,
   },
+  passwordContainer: {
+    position: 'relative',
+    width: '100%',
+  },
+  passwordInput: {
+    paddingRight: 50,
+    marginBottom: 0,
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 12,
+    top: '50%',
+    transform: [{ translateY: -20 }],
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 40,
+    height: 40,
+  },
   errorText: {
     fontSize: 13,
-    marginTop: -6,
+    marginTop: 6,
     marginBottom: 8,
   },
 });

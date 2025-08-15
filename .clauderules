@@ -1,0 +1,198 @@
+# RentalEase Technician Mobile App - Claude Rules
+
+## Project Context
+
+This is a React Native mobile application for technicians in the RentalEase ecosystem. The app allows technicians to view available jobs, claim them, view details, and manage their work schedule.
+
+## Technical Stack
+
+- **Framework**: React Native with Expo SDK 53
+- **Navigation**: Expo Router 5.1 (file-based routing)
+- **Language**: TypeScript with strict mode
+- **Package Manager**: pnpm (NEVER use npm)
+- **Authentication**: JWT tokens with Expo SecureStore
+- **Icons**: MaterialCommunityIcons
+- **API**: RESTful API with Bearer token authentication
+
+## Project Structure
+
+```
+/app
+  /_layout.tsx          # Root layout with auth flow
+  /index.tsx           # Redirect to login
+  /(auth)              # Authentication group
+    /_layout.tsx       # Auth layout
+    /login.tsx         # Login screen
+    /forgot-password.tsx
+  /(app)               # Main app group (tab navigation)
+    /_layout.tsx       # Tab navigation layout
+    /index.tsx         # Dashboard
+    /jobs.tsx          # Available jobs
+    /my-jobs.tsx      # My jobs
+    /more.tsx          # Settings/profile
+  /job-details/[id].tsx # Job details (outside tabs)
+/services              # API services
+/assets               # Static assets
+```
+
+## Development Guidelines
+
+### Code Standards
+
+- Use TypeScript with proper typing
+- No comments unless explicitly requested
+- Use React Native StyleSheet for all styling
+- Implement proper error handling with try/catch blocks
+- Use optional chaining (?.) for object properties
+- Provide fallback values for undefined data
+
+### API Integration Rules
+
+- Base URL from `process.env.EXPO_PUBLIC_API_BASE_URL`
+- Handle localhost mapping for Android emulator (10.0.2.2)
+- Include Authorization header: `Bearer ${token}`
+- Log API calls with format: `[functionName] URL: ${url}`
+- Always handle both success and error responses
+- Use structured error logging: `{ name, message, stack }`
+
+### Navigation Patterns
+
+- Use `router.push()` for standard navigation
+- Use `router.replace()` for authentication flow
+- Dynamic routes outside tab structure to avoid navbar clutter
+- Implement proper back navigation with router.back()
+
+### UI/UX Standards
+
+- **Theme**: Primary color #024974, white backgrounds
+- **Cards**: Border radius 12px, subtle shadows
+- **Spacing**: Consistent 16px margins/padding
+- **Loading**: ActivityIndicator with descriptive text
+- **Empty States**: Icon + title + description
+- **Buttons**: Consistent height, proper touch targets
+- **Contact Integration**: Clickable phone/email with Linking API
+
+### Data Handling
+
+- Always use optional chaining: `job.property?.address?.fullAddress`
+- Provide meaningful fallback text: `'Address not available'`
+- Handle pagination with hasNextPage/hasPrevPage
+- Implement pull-to-refresh and load-more functionality
+- Safe type checking: `typeof property === 'string'`
+
+### Security Best Practices
+
+- Never log authentication tokens or sensitive data
+- Use Expo SecureStore for token persistence
+- Implement proper logout with token cleanup
+- Validate user input before API calls
+- Handle authentication failures gracefully
+
+### Error Handling
+
+- User-facing errors: `Alert.alert("Title", "Message")`
+- Console logging: `console.log('[functionName] error', errorObject)`
+- Graceful degradation for missing data
+- Fallback UI states for error conditions
+
+## Key Features Implementation
+
+### Authentication Flow
+
+1. Check token on app startup
+2. Redirect to login if no token
+3. Navigate to main app after successful login
+4. Implement logout with secure token deletion
+
+### Job Management
+
+1. Fetch available jobs with pagination
+2. Display jobs with proper error handling
+3. Implement job claiming with API integration
+4. Show job details with contact functionality
+5. Handle different job statuses and priorities
+
+### Contact Integration
+
+- Phone: `Linking.openURL(\`tel:\${phoneNumber}\`)`
+- Email: `Linking.openURL(\`mailto:\${email}\`)`
+- Guard against undefined contact info
+
+## Common Patterns
+
+### API Service Function
+
+```typescript
+export async function functionName(params): Promise<ReturnType> {
+  const baseUrl = getBaseUrl();
+  const token = await getToken();
+
+  if (!token) {
+    throw new Error("No authentication token found");
+  }
+
+  try {
+    const url = `${baseUrl}/api/endpoint`;
+    console.log("[functionName] URL:", url);
+
+    const res = await fetch(url, {
+      method: "METHOD",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      throw new Error(json?.message || "Operation failed");
+    }
+
+    return json.data;
+  } catch (e: any) {
+    console.log("[functionName] error", {
+      name: e?.name,
+      message: e?.message,
+      stack: e?.stack,
+    });
+    throw new Error(e?.message || "Network request failed");
+  }
+}
+```
+
+### Safe Component Rendering
+
+```typescript
+<Text>
+  {object?.nested?.property || 'Fallback text'}
+</Text>
+
+<TouchableOpacity
+  onPress={() => data?.contact && handleAction(data.contact)}
+>
+```
+
+## Performance Considerations
+
+- Use FlatList for large lists with pagination
+- Implement pull-to-refresh patterns
+- Show loading states during API calls
+- Optimize images and assets
+- Use memo and callbacks appropriately
+
+## Testing & Debugging
+
+- Test on both iOS and Android
+- Handle different screen sizes
+- Test network error conditions
+- Verify authentication flows
+- Test contact integration features
+
+## Deployment Notes
+
+- Environment variables in .env file
+- App scheme: `rentalease://`
+- Bundle identifier follows platform conventions
+- Proper error boundaries for production builds

@@ -53,7 +53,11 @@ export type RecentJob = {
   status: string;
   dueDate: string;
   updatedAt: string;
-  property: string;
+  property: string | {
+    address?: {
+      fullAddress?: string;
+    };
+  };
 };
 
 export type PaymentStats = {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { InputField, PrimaryButton, ScreenContainer, Subtitle, Title, LinkText } from '@components/UI';
+import { InputField, PasswordInputField, PrimaryButton, ScreenContainer, Subtitle, Title, LinkText } from '@components/UI';
 import { technicianLogin } from '@services/auth';
 import { saveToken } from '@services/secureStore';
 
@@ -53,8 +53,7 @@ export default function LoginPage() {
             onChangeText={setEmail}
             error={errors.email}
           />
-          <InputField
-            secureTextEntry
+          <PasswordInputField
             placeholder="Password"
             value={password}
             onChangeText={setPassword}

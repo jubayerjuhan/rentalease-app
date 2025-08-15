@@ -1,0 +1,85 @@
+# RentalEase Technician Mobile App - Cursor Rules
+
+## Project Overview
+- React Native mobile app built with Expo SDK 53
+- Uses Expo Router 5.1 for file-based routing
+- TypeScript with strict mode
+- pnpm package manager (always use pnpm, never npm)
+
+## Architecture & Structure
+- `/app` - File-based routing with Expo Router
+- `/app/(auth)` - Authentication screens (login, forgot-password)
+- `/app/(app)` - Main app screens post-authentication
+- `/services` - API services and utilities
+- `/assets` - Static assets (icons, images)
+
+## Development Guidelines
+
+### Code Style
+- Use TypeScript with strict mode
+- No unnecessary comments unless requested
+- Use React Native StyleSheet for styling
+- Consistent naming: camelCase for variables/functions, PascalCase for components
+- Use MaterialCommunityIcons for icons
+
+### API Integration
+- Base URL from EXPO_PUBLIC_API_BASE_URL environment variable
+- Use secure token storage with Expo SecureStore
+- Handle Android emulator localhost mapping (10.0.2.2)
+- Always include proper error handling with try/catch
+- Log API calls with descriptive prefixes like [functionName]
+
+### Navigation
+- Use Expo Router with file-based routing
+- Tab navigation for main app sections
+- Dynamic routes outside tab structure (e.g., /job-details/[id])
+- Use router.push() for navigation, router.replace() for auth flow
+
+### UI/UX Guidelines
+- Primary color: #024974 (blue theme)
+- Use white backgrounds with subtle shadows
+- Consistent spacing and border radius (12px for cards)
+- Loading states with ActivityIndicator
+- Empty states with icons and helpful messages
+- Pull-to-refresh functionality where appropriate
+
+### Data Handling
+- Always use optional chaining for nested objects
+- Provide fallback values for missing data
+- Handle both string and object property types
+- Implement proper pagination with hasNextPage/hasPrevPage
+
+### Security
+- Never log sensitive data (tokens, passwords)
+- Use secure storage for authentication tokens
+- Validate user input
+- Handle authentication errors gracefully
+
+### Error Handling
+- Use Alert.alert() for user-facing errors
+- Console.log errors with structured format (name, message, stack)
+- Provide user-friendly error messages
+- Implement fallback UI states
+
+## Commands
+- `pnpm start` - Start development server
+- `pnpm run android` - Run on Android
+- `pnpm run ios` - Run on iOS
+- `pnpm run web` - Run web version
+
+## Key Features
+- Secure authentication with token-based auth
+- Job listing with pagination and filtering
+- Job claiming functionality
+- Contact integration (phone/email)
+- Logout functionality with token cleanup
+- Responsive design for mobile screens
+
+## Best Practices
+- Always read files before editing
+- Use consistent error handling patterns
+- Implement loading and empty states
+- Test on both iOS and Android
+- Follow React Native performance guidelines
+- Use TypeScript types for API responses
+- Implement proper navigation flows

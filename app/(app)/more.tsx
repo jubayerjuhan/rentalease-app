@@ -1,10 +1,44 @@
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Alert } from "react-native";
+import React, { useState, useEffect } from "react";
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Switch } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { technicianLogout } from "../../services/auth";
+import { getProfile, TechnicianProfile } from "../../services/profile";
+import { useTheme, Theme } from "../../contexts/ThemeContext";
 
 export default function MorePage() {
   const router = useRouter();
+  const { theme, isDark, toggleTheme } = useTheme();
+  const [profile, setProfile] = useState<TechnicianProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const profileData = await getProfile();
+      setProfile(profileData);
+    } catch (error: any) {
+      console.log("[More] Error loading profile:", error);
+      setError(error.message || "Failed to load profile");
+      
+      // Handle authentication errors
+      if (error.message?.includes("Authentication expired")) {
+        Alert.alert(
+          "Session Expired", 
+          "Please login again to continue.",
+          [{ text: "OK", onPress: () => router.replace("/(auth)/login") }]
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
 
   const handleLogout = async () => {
     Alert.alert(
@@ -34,9 +68,14 @@ export default function MorePage() {
 
   const menuItems = [
     {
-      title: "Profile Settings",
+      title: "Edit Profile",
       icon: "account-edit",
-      onPress: () => Alert.alert("Profile Settings", "Profile settings coming soon..."),
+      onPress: () => router.push("/profile/edit"),
+    },
+    {
+      title: "Change Password",
+      icon: "lock-outline",
+      onPress: () => router.push("/profile/change-password"),
     },
     {
       title: "Notifications",
@@ -65,37 +104,95 @@ export default function MorePage() {
     },
   ];
 
+  const settingsItems = [
+    {
+      title: "Dark Mode",
+      icon: isDark ? "weather-night" : "weather-sunny",
+      isToggle: true,
+      value: isDark,
+      onToggle: toggleTheme,
+    },
+  ];
+
+  const styles = createStyles(theme);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={styles.loadingText}>Loading profile...</Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container}>
       {/* Profile Section */}
       <View style={styles.profileSection}>
         <View style={styles.avatarContainer}>
-          <MaterialCommunityIcons name="account-circle" size={80} color="#024974" />
+          {profile?.profileImage?.cloudinaryUrl ? (
+            <View style={styles.profileImageContainer}>
+              {/* TODO: Add Image component when image upload is implemented */}
+              <MaterialCommunityIcons name="account-circle" size={80} color={theme.primary} />
+            </View>
+          ) : (
+            <MaterialCommunityIcons name="account-circle" size={80} color={theme.primary} />
+          )}
         </View>
-        <Text style={styles.profileName}>John Technician</Text>
-        <Text style={styles.profileEmail}>john.tech@rentalease.com</Text>
-        <Text style={styles.profileRole}>Senior Technician</Text>
         
-        <TouchableOpacity style={styles.editProfileButton}>
-          <MaterialCommunityIcons name="pencil" size={16} color="#024974" />
+        <Text style={styles.profileName}>
+          {profile?.fullName || "Technician Name"}
+        </Text>
+        <Text style={styles.profileEmail}>
+          {profile?.email || "email@example.com"}
+        </Text>
+        <Text style={styles.profileRole}>
+          {profile?.availabilityStatus || "Technician"} • {profile?.experience || 0} years exp
+        </Text>
+        
+        <TouchableOpacity 
+          style={styles.editProfileButton}
+          onPress={() => router.push("/profile/edit")}
+        >
+          <MaterialCommunityIcons name="pencil" size={16} color={theme.primary} />
           <Text style={styles.editProfileText}>Edit Profile</Text>
         </TouchableOpacity>
       </View>
 
+      {/* Settings Section */}
+      <View style={styles.menuSection}>
+        <Text style={styles.sectionTitle}>Settings</Text>
+        {settingsItems.map((item, index) => (
+          <View key={index} style={styles.menuItem}>
+            <View style={styles.menuItemLeft}>
+              <MaterialCommunityIcons name={item.icon} size={24} color={theme.textSecondary} />
+              <Text style={styles.menuItemText}>{item.title}</Text>
+            </View>
+            <Switch
+              value={item.value}
+              onValueChange={item.onToggle}
+              thumbColor={item.value ? theme.primary : theme.disabled}
+              trackColor={{ false: theme.border, true: theme.primaryLight }}
+            />
+          </View>
+        ))}
+      </View>
+
       {/* Menu List */}
       <View style={styles.menuSection}>
+        <Text style={styles.sectionTitle}>Account</Text>
         {menuItems.map((item, index) => (
           <TouchableOpacity key={index} style={styles.menuItem} onPress={item.onPress}>
             <View style={styles.menuItemLeft}>
-              <MaterialCommunityIcons name={item.icon} size={24} color="#6B7280" />
+              <MaterialCommunityIcons name={item.icon} size={24} color={theme.textSecondary} />
               <Text style={styles.menuItemText}>{item.title}</Text>
             </View>
-            <MaterialCommunityIcons name="chevron-right" size={20} color="#9CA3AF" />
+            <MaterialCommunityIcons name="chevron-right" size={20} color={theme.textTertiary} />
           </TouchableOpacity>
         ))}
         
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <MaterialCommunityIcons name="logout" size={24} color="#EF4444" />
+          <MaterialCommunityIcons name="logout" size={24} color={theme.error} />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
@@ -103,19 +200,30 @@ export default function MorePage() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.background,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: theme.textSecondary,
   },
   profileSection: {
-    backgroundColor: 'white',
+    backgroundColor: theme.surface,
     paddingTop: 60,
     paddingBottom: 30,
     paddingHorizontal: 24,
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: theme.border,
   },
   avatarContainer: {
     marginBottom: 16,
@@ -123,19 +231,27 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: theme.text,
     marginBottom: 4,
   },
   profileEmail: {
     fontSize: 16,
-    color: '#6B7280',
+    color: theme.textSecondary,
     marginBottom: 4,
   },
   profileRole: {
     fontSize: 14,
-    color: '#6CC48C',
+    color: theme.success,
     fontWeight: '600',
     marginBottom: 16,
+  },
+  profileImageContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: theme.divider,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   editProfileButton: {
     flexDirection: 'row',
@@ -144,18 +260,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#024974',
+    borderColor: theme.primary,
   },
   editProfileText: {
-    color: '#024974',
+    color: theme.primary,
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 8,
   },
   menuSection: {
-    backgroundColor: 'white',
+    backgroundColor: theme.surface,
     marginTop: 12,
     paddingVertical: 8,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.textSecondary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   menuItem: {
     flexDirection: 'row',
@@ -170,7 +295,7 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     fontSize: 16,
-    color: '#1F2937',
+    color: theme.text,
     marginLeft: 16,
   },
   logoutButton: {
@@ -180,11 +305,11 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     marginTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: theme.border,
   },
   logoutText: {
     fontSize: 16,
-    color: '#EF4444',
+    color: theme.error,
     marginLeft: 16,
     fontWeight: '600',
   },
