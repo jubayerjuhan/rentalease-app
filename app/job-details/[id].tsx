@@ -373,6 +373,7 @@ export default function JobDetailsPage() {
       <Stack.Screen 
         options={{ 
           title: `Job ${job.job_id}`,
+          headerBackTitle: "Jobs",
           headerStyle: {
             backgroundColor: theme.surface,
           },
@@ -404,18 +405,31 @@ export default function JobDetailsPage() {
                     <Text style={styles.dueText}>DUE</Text>
                   </View>
                 )}
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: statusColor.bg },
-                  ]}
-                >
-                  <Text
-                    style={[styles.statusText, { color: statusColor.text }]}
+                {job.status === "Completed" ? (
+                  <View
+                    style={[styles.completedBadge, { backgroundColor: "#10B981" }]}
                   >
-                    {job.status}
-                  </Text>
-                </View>
+                    <MaterialCommunityIcons
+                      name="check"
+                      size={12}
+                      color="white"
+                    />
+                    <Text style={styles.completedText}>COMPLETED</Text>
+                  </View>
+                ) : (
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: statusColor.bg },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.statusText, { color: statusColor.text }]}
+                    >
+                      {job.status}
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
             <View style={styles.jobTypeContainer}>
@@ -968,24 +982,43 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
   dueBadge: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    gap: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
   },
   dueText: {
-    fontSize: 10,
+    fontSize: 11,
+    fontWeight: "700",
+    color: "white",
+    letterSpacing: 0.5,
+  },
+  completedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+    backgroundColor: "#10B981",
+  },
+  completedText: {
+    fontSize: 11,
     fontWeight: "700",
     color: "white",
     letterSpacing: 0.5,
