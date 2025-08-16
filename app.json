@@ -19,7 +19,8 @@
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
-        }
+        },
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -28,7 +29,9 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": ["INTERNET"],
+      "permissions": [
+        "INTERNET"
+      ],
       "package": "com.rentalease.technician"
     },
     "web": {
@@ -38,6 +41,12 @@
       "expo-router",
       "expo-secure-store"
     ],
-    "scheme": "rentalease"
+    "scheme": "rentalease",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f04bd6f3-3938-48b7-9807-a95724efde88"
+      }
+    }
   }
 }
