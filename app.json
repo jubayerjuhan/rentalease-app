@@ -30,6 +30,7 @@
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
+        "INTERNET",
         "INTERNET"
       ],
       "package": "com.rentalease.technician"
@@ -47,6 +48,12 @@
       "eas": {
         "projectId": "f04bd6f3-3938-48b7-9807-a95724efde88"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f04bd6f3-3938-48b7-9807-a95724efde88"
     }
   }
 }
