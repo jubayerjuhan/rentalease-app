@@ -15,6 +15,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fetchTechnicianJobs, Job } from "@services/jobs";
 import { useRouter } from "expo-router";
 import { useTheme, Theme } from "../../contexts/ThemeContext";
+import { FilterPills } from "../../components/FilterPills";
 
 export default function ActiveJobsPage() {
   const router = useRouter();
@@ -22,11 +23,11 @@ export default function ActiveJobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState("Active");
+  const [selectedStatus, setSelectedStatus] = useState("All");
   const [error, setError] = useState<string | null>(null);
 
   const loadJobs = useCallback(
-    async (isRefresh = false, status = "Active") => {
+    async (isRefresh = false, status = "All") => {
       try {
         if (isRefresh) setRefreshing(true);
         else setLoading(true);
@@ -40,7 +41,14 @@ export default function ActiveJobsPage() {
           limit: 50,
         });
 
-        setJobs(data.jobs || []);
+        // Sort jobs by due date in ascending order
+        const sortedJobs = (data.jobs || []).sort((a, b) => {
+          const dateA = new Date(a.dueDate);
+          const dateB = new Date(b.dueDate);
+          return dateA.getTime() - dateB.getTime();
+        });
+
+        setJobs(sortedJobs);
       } catch (error: any) {
         console.log("[MyJobs] Error loading jobs:", error);
         setError(error.message || "Failed to load jobs");
@@ -69,8 +77,8 @@ export default function ActiveJobsPage() {
     loadJobs(true, selectedStatus);
   }, [loadJobs, selectedStatus]);
 
-  const changeStatus = useCallback((status: string) => {
-    setSelectedStatus(status);
+  const changeStatus = useCallback((pill: { id: string; label: string }) => {
+    setSelectedStatus(pill.id);
   }, []);
 
   const getStatusInfo = (status: string) => {
@@ -138,11 +146,30 @@ export default function ActiveJobsPage() {
         return dueDate <= today;
       };
 
+      // Check if job is due (overdue)
+      const isJobDue = () => {
+        const today = new Date();
+        const dueDate = new Date(item.dueDate);
+        today.setHours(0, 0, 0, 0);
+        dueDate.setHours(0, 0, 0, 0);
+        return (
+          dueDate < today &&
+          (item.status === "Scheduled" || item.status === "In Progress")
+        );
+      };
+
+      const isDue = isJobDue();
+
       return (
         <View
           style={[
             styles.jobCard,
-            { backgroundColor: theme.card, borderLeftColor: theme.primary },
+            {
+              backgroundColor: theme.card,
+              borderLeftColor: isDue ? theme.error : theme.primary,
+              borderWidth: isDue ? 2 : 0,
+              borderColor: isDue ? theme.error : "transparent",
+            },
           ]}
         >
           <View style={styles.jobHeader}>
@@ -165,16 +192,32 @@ export default function ActiveJobsPage() {
                 </Text>
               </View>
               <View
-                style={[
-                  styles.priorityBadge,
-                  { backgroundColor: statusInfo.bgColor },
-                ]}
+                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
               >
-                <Text
-                  style={[styles.priorityText, { color: statusInfo.color }]}
+                {isDue && (
+                  <View
+                    style={[styles.dueBadge, { backgroundColor: theme.error }]}
+                  >
+                    <MaterialCommunityIcons
+                      name="alert"
+                      size={12}
+                      color="white"
+                    />
+                    <Text style={styles.dueText}>DUE</Text>
+                  </View>
+                )}
+                <View
+                  style={[
+                    styles.priorityBadge,
+                    { backgroundColor: statusInfo.bgColor },
+                  ]}
                 >
-                  {item.status}
-                </Text>
+                  <Text
+                    style={[styles.priorityText, { color: statusInfo.color }]}
+                  >
+                    {item.status}
+                  </Text>
+                </View>
               </View>
             </View>
             <Text style={[styles.jobTitle, { color: theme.text }]}>
@@ -312,10 +355,12 @@ export default function ActiveJobsPage() {
           color={theme.textTertiary}
         />
         <Text style={[styles.emptyTitle, { color: theme.text }]}>
-          No {selectedStatus} Jobs
+          No {selectedStatus === "All" ? "" : selectedStatus} Jobs
         </Text>
         <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-          {selectedStatus === "Active"
+          {selectedStatus === "All"
+            ? "You don't have any jobs at the moment"
+            : selectedStatus === "Active"
             ? "You don't have any active jobs at the moment"
             : `No ${selectedStatus.toLowerCase()} jobs found`}
         </Text>
@@ -341,7 +386,13 @@ export default function ActiveJobsPage() {
     [error, loadJobs, selectedStatus]
   );
 
-  const statusOptions = ["Active", "Scheduled", "In Progress", "Completed"];
+  const statusOptions = [
+    { id: "All", label: "All Jobs" },
+    { id: "Active", label: "Active" },
+    { id: "Scheduled", label: "Scheduled" },
+    { id: "In Progress", label: "In Progress" },
+    { id: "Completed", label: "Completed" },
+  ];
   const styles = createStyles(theme);
 
   return (
@@ -354,33 +405,13 @@ export default function ActiveJobsPage() {
         </Text>
       </View>
 
-      {/* Status Filter */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.statusFilterContainer}
-        style={styles.statusFilterScrollView}
-      >
-        {statusOptions.map((status) => (
-          <TouchableOpacity
-            key={status}
-            style={[
-              styles.statusFilterButton,
-              selectedStatus === status && styles.activeStatusFilter,
-            ]}
-            onPress={() => changeStatus(status)}
-          >
-            <Text
-              style={[
-                styles.statusFilterText,
-                selectedStatus === status && styles.activeStatusFilterText,
-              ]}
-            >
-              {status}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {/* Status Filter Pills */}
+      <FilterPills
+        pills={statusOptions}
+        selectedPill={selectedStatus}
+        onPillPress={changeStatus}
+        style={{ marginTop: 10, marginBottom: 8 }}
+      />
 
       {/* Jobs List */}
       {loading ? (
@@ -406,7 +437,8 @@ export default function ActiveJobsPage() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             styles.listContainer,
-            { paddingBottom: 100 }, // Add bottom padding for tab navigation
+            { paddingBottom: 100 },
+            jobs.length === 0 && { flex: 1 },
           ]}
           removeClippedSubviews={true}
           maxToRenderPerBatch={10}
@@ -465,43 +497,11 @@ const createStyles = (theme: Theme) =>
       fontSize: 16,
       color: theme.textSecondary,
     },
-    statusFilterScrollView: {
-      paddingTop: 16,
-      paddingBottom: 16,
-    },
-    statusFilterContainer: {
-      flexDirection: "row",
-      paddingHorizontal: 16,
-      paddingBottom: 8,
-    },
-    statusFilterButton: {
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      marginRight: 12,
-      borderRadius: 20,
-      backgroundColor: theme.surface,
-      borderWidth: 1,
-      borderColor: theme.border,
-      height: 40,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    activeStatusFilter: {
-      backgroundColor: theme.primary,
-      borderColor: theme.primary,
-    },
-    statusFilterText: {
-      fontSize: 14,
-      color: theme.textSecondary,
-      fontWeight: "500",
-    },
-    activeStatusFilterText: {
-      color: theme.surface,
-    },
     loadingContainer: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
+      paddingVertical: 60,
     },
     loadingText: {
       marginTop: 16,
@@ -510,7 +510,6 @@ const createStyles = (theme: Theme) =>
     },
     listContainer: {
       paddingTop: 8,
-      paddingBottom: 20,
     },
     jobCard: {
       backgroundColor: theme.card,
@@ -646,7 +645,8 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      paddingTop: 100,
+      paddingVertical: 60,
+      paddingHorizontal: 20,
     },
     emptyTitle: {
       fontSize: 20,
@@ -672,5 +672,20 @@ const createStyles = (theme: Theme) =>
       color: theme.surface,
       fontSize: 16,
       fontWeight: "600",
+    },
+    dueBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      backgroundColor: theme.error,
+    },
+    dueText: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: "white",
+      marginLeft: 4,
+      letterSpacing: 0.5,
     },
   });

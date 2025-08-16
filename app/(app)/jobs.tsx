@@ -17,9 +17,13 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { fetchAvailableJobs, claimJob, Job, JobFilters } from "@services/jobs";
 import { useTheme } from "../../contexts/ThemeContext";
+import { FilterPills } from "../../components/FilterPills";
 
 // Helper Functions
-const getPriorityColor = (priority: string) => {
+const getPriorityColor = (priority: string, isDue = false) => {
+  if (isDue) {
+    return "#FEE2E2"; // Light red for due jobs
+  }
   const colors = {
     Low: "#D1FAE5",
     Medium: "#FEF3C7",
@@ -27,6 +31,14 @@ const getPriorityColor = (priority: string) => {
     Critical: "#FEE2E2",
   };
   return colors[priority] || "#F3F4F6";
+};
+
+const isJobDue = (dueDate: string) => {
+  const today = new Date();
+  const due = new Date(dueDate);
+  today.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+  return due < today;
 };
 
 const getJobTypeIcon = (jobType: string) => {
@@ -151,9 +163,16 @@ export default function JobsPage() {
     ]);
   };
 
-  const applyFilter = (filter: string) => {
-    setSelectedFilter(filter);
+  const applyFilter = (pill: { id: string; label: string }) => {
+    setSelectedFilter(pill.id);
     setShowFilterModal(false);
+    
+    // For due jobs, we'll filter client-side since the backend might not support it
+    if (pill.id === "Due Jobs") {
+      loadJobs(false, { page: 1 });
+      return;
+    }
+    
     const filterMap: Record<string, JobFilters> = {
       All: {},
       "High Priority": { priority: "High" },
@@ -162,14 +181,23 @@ export default function JobsPage() {
       Gas: { jobType: "Gas" },
       Electrical: { jobType: "Electrical" },
     };
-    loadJobs(false, { ...filterMap[filter], page: 1 });
+    loadJobs(false, { ...filterMap[pill.id], page: 1 });
   };
 
-  const renderJobCard = ({ item }: { item: Job }) => (
+  const renderJobCard = ({ item }: { item: Job }) => {
+    const isDue = isJobDue(item.dueDate);
+    
+    return (
     <View
       style={[
         styles.jobCard,
-        { backgroundColor: theme.card, borderLeftColor: theme.primary },
+        { 
+          backgroundColor: theme.card, 
+          borderLeftColor: isDue ? theme.error : theme.primary,
+          borderWidth: isDue ? 2 : 0,
+          borderColor: isDue ? theme.error : "transparent",
+        },
+        isDue && styles.dueJobCard,
       ]}
     >
       <View style={styles.jobHeader}>
@@ -189,13 +217,45 @@ export default function JobsPage() {
               {item.job_id}
             </Text>
           </View>
-          <View
-            style={[
-              styles.priorityBadge,
-              { backgroundColor: getPriorityColor(item.priority) },
-            ]}
-          >
-            <Text style={styles.priorityText}>{item.priority}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            {isDue && (
+              <View
+                style={[
+                  styles.dueBadge,
+                  { backgroundColor: theme.error }
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="alert"
+                  size={12}
+                  color="white"
+                />
+                <Text style={styles.dueText}>DUE</Text>
+              </View>
+            )}
+            {item.status === "Completed" && (
+              <View
+                style={[
+                  styles.completedBadge,
+                  { backgroundColor: theme.success }
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="check"
+                  size={12}
+                  color="white"
+                />
+                <Text style={styles.completedText}>COMPLETED</Text>
+              </View>
+            )}
+            <View
+              style={[
+                styles.priorityBadge,
+                { backgroundColor: getPriorityColor(item.priority, isDue) },
+              ]}
+            >
+              <Text style={styles.priorityText}>{item.priority}</Text>
+            </View>
           </View>
         </View>
         <Text style={[styles.jobTitle, { color: theme.text }]}>
@@ -221,7 +281,9 @@ export default function JobsPage() {
             color={theme.textSecondary}
           />
           <Text style={[styles.detailText, { color: theme.textSecondary }]}>
-            {item.property.address.fullAddress}
+            {typeof item.property?.address === "string"
+              ? item.property.address
+              : item.property?.address?.fullAddress || "Address not available"}
           </Text>
         </View>
 
@@ -243,7 +305,7 @@ export default function JobsPage() {
             color={theme.textSecondary}
           />
           <Text style={[styles.detailText, { color: theme.textSecondary }]}>
-            {item.property.currentTenant.name}
+            {item.property?.currentTenant?.name || "Tenant not available"}
           </Text>
         </View>
 
@@ -254,7 +316,7 @@ export default function JobsPage() {
             color={theme.textSecondary}
           />
           <Text style={[styles.detailText, { color: theme.textSecondary }]}>
-            {item.property.currentLandlord.name}
+            {item.property?.currentLandlord?.name || "Landlord not available"}
           </Text>
         </View>
       </View>
@@ -320,7 +382,8 @@ export default function JobsPage() {
         </TouchableOpacity>
       </View>
     </View>
-  );
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -341,12 +404,13 @@ export default function JobsPage() {
   );
 
   const filterOptions = [
-    "All",
-    "High Priority",
-    "Medium Priority",
-    "Smoke",
-    "Gas",
-    "Electrical",
+    { id: "All", label: "All Jobs" },
+    { id: "Due Jobs", label: "Due Jobs" },
+    { id: "High Priority", label: "High Priority" },
+    { id: "Medium Priority", label: "Medium Priority" },
+    { id: "Smoke", label: "Smoke" },
+    { id: "Gas", label: "Gas" },
+    { id: "Electrical", label: "Electrical" },
   ];
 
   return (
@@ -403,42 +467,12 @@ export default function JobsPage() {
       </View>
 
       {/* Filter Pills */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterPillsContainer}
-        style={styles.filterPillsScrollView}
-      >
-        {filterOptions.map((option) => (
-          <TouchableOpacity
-            key={option}
-            style={[
-              styles.filterPill,
-              {
-                backgroundColor:
-                  selectedFilter === option ? theme.primary : theme.surface,
-                borderColor:
-                  selectedFilter === option ? theme.primary : theme.border,
-              },
-            ]}
-            onPress={() => applyFilter(option)}
-          >
-            <Text
-              style={[
-                styles.filterPillText,
-                {
-                  color:
-                    selectedFilter === option
-                      ? theme.surface
-                      : theme.textSecondary,
-                },
-              ]}
-            >
-              {option}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <FilterPills
+        pills={filterOptions}
+        selectedPill={selectedFilter}
+        onPillPress={applyFilter}
+        style={{ marginBottom: 8 }}
+      />
 
       {/* Jobs List */}
       {loading && jobs.length === 0 ? (
@@ -450,7 +484,7 @@ export default function JobsPage() {
         </View>
       ) : (
         <FlatList
-          data={jobs}
+          data={selectedFilter === "Due Jobs" ? jobs.filter(job => isJobDue(job.dueDate)) : jobs}
           keyExtractor={(item, index) => `${item.id}-${item.job_id}-${index}`}
           renderItem={renderJobCard}
           refreshControl={
@@ -458,13 +492,20 @@ export default function JobsPage() {
               refreshing={refreshing}
               onRefresh={onRefresh}
               colors={[theme.primary]}
+              tintColor={theme.primary}
+              titleColor={theme.text}
+              progressBackgroundColor={theme.surface}
             />
           }
           ListEmptyComponent={renderEmptyState}
           onEndReached={onLoadMore}
           onEndReachedThreshold={0.3}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.listContainer, { paddingBottom: 110 }]}
+          contentContainerStyle={[
+            styles.listContainer,
+            { paddingBottom: 110 },
+            jobs.length === 0 && { flex: 1 },
+          ]}
           ListFooterComponent={
             loadingMore ? (
               <View style={styles.loadingMore}>
@@ -530,10 +571,10 @@ export default function JobsPage() {
             </Text>
             {filterOptions.map((option) => (
               <TouchableOpacity
-                key={option}
+                key={option.id}
                 style={[
                   styles.filterOption,
-                  selectedFilter === option && {
+                  selectedFilter === option.id && {
                     backgroundColor: isDark ? theme.primary + "20" : "#F0F9FF",
                   },
                 ]}
@@ -543,15 +584,15 @@ export default function JobsPage() {
                   style={[
                     styles.filterOptionText,
                     { color: theme.text },
-                    selectedFilter === option && {
+                    selectedFilter === option.id && {
                       color: theme.primary,
                       fontWeight: "500",
                     },
                   ]}
                 >
-                  {option}
+                  {option.label}
                 </Text>
-                {selectedFilter === option && (
+                {selectedFilter === option.id && (
                   <MaterialCommunityIcons
                     name="check"
                     size={20}
@@ -642,6 +683,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingVertical: 60,
   },
   loadingText: {
     marginTop: 16,
@@ -650,7 +692,6 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingTop: 8,
-    paddingBottom: 20,
   },
   loadingMore: {
     flexDirection: "row",
@@ -704,6 +745,41 @@ const styles = StyleSheet.create({
     elevation: 4,
     borderLeftWidth: 4,
     borderLeftColor: "#024974",
+  },
+  dueJobCard: {
+    shadowColor: "#EF4444",
+    shadowOpacity: 0.15,
+    elevation: 6,
+  },
+  dueBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: "#EF4444",
+  },
+  dueText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "white",
+    marginLeft: 4,
+    letterSpacing: 0.5,
+  },
+  completedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: "#10B981",
+  },
+  completedText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "white",
+    marginLeft: 4,
+    letterSpacing: 0.5,
   },
   jobHeader: {
     marginBottom: 12,
@@ -824,7 +900,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingTop: 100,
+    paddingVertical: 60,
+    paddingHorizontal: 20,
   },
   emptyTitle: {
     fontSize: 20,
@@ -877,25 +954,6 @@ const styles = StyleSheet.create({
   },
   selectedFilterOptionText: {
     color: "#024974",
-    fontWeight: "500",
-  },
-  filterPillsContainer: {
-    paddingHorizontal: 12,
-    paddingTop: 12,
-    paddingBottom: 32,
-  },
-  filterPill: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    marginRight: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  filterPillText: {
-    fontSize: 14,
     fontWeight: "500",
   },
 });

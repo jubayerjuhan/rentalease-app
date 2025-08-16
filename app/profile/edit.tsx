@@ -13,10 +13,17 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, Stack } from "expo-router";
-import { getProfile, updateProfile, TechnicianProfile, ProfileUpdateData } from "../../services/profile";
+import {
+  getProfile,
+  updateProfile,
+  TechnicianProfile,
+  ProfileUpdateData,
+} from "../../services/profile";
+import { useTheme, Theme } from "../../contexts/ThemeContext";
 
 export default function EditProfilePage() {
   const router = useRouter();
+  const { theme, isDark } = useTheme();
   const [profile, setProfile] = useState<TechnicianProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -39,7 +46,7 @@ export default function EditProfilePage() {
       setLoading(true);
       const profileData = await getProfile();
       setProfile(profileData);
-      
+
       // Pre-fill form with existing data
       setFormData({
         firstName: profileData.firstName || "",
@@ -57,7 +64,7 @@ export default function EditProfilePage() {
     } catch (error: any) {
       console.log("[EditProfile] Error loading profile:", error);
       Alert.alert("Error", error.message || "Failed to load profile");
-      
+
       if (error.message?.includes("Authentication expired")) {
         router.replace("/(auth)/login");
       }
@@ -73,7 +80,7 @@ export default function EditProfilePage() {
   const updateFormData = (field: string, value: string | number) => {
     if (field.startsWith("address.")) {
       const addressField = field.split(".")[1];
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         address: {
           ...prev.address,
@@ -81,7 +88,7 @@ export default function EditProfilePage() {
         },
       }));
     } else {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         [field]: value,
       }));
@@ -90,7 +97,9 @@ export default function EditProfilePage() {
 
   const generateFullAddress = () => {
     const { street, suburb, state, postcode } = formData.address;
-    const fullAddress = [street, suburb, state, postcode].filter(Boolean).join(", ");
+    const fullAddress = [street, suburb, state, postcode]
+      .filter(Boolean)
+      .join(", ");
     updateFormData("address.fullAddress", fullAddress);
   };
 
@@ -115,10 +124,10 @@ export default function EditProfilePage() {
 
     try {
       setSaving(true);
-      
+
       // Generate full address before saving
       generateFullAddress();
-      
+
       const updateData: ProfileUpdateData = {
         ...formData,
         address: {
@@ -127,22 +136,22 @@ export default function EditProfilePage() {
             formData.address.street,
             formData.address.suburb,
             formData.address.state,
-            formData.address.postcode
-          ].filter(Boolean).join(", "),
+            formData.address.postcode,
+          ]
+            .filter(Boolean)
+            .join(", "),
         },
       };
 
       await updateProfile(updateData);
-      
-      Alert.alert(
-        "Success",
-        "Profile updated successfully!",
-        [{ text: "OK", onPress: () => router.back() }]
-      );
+
+      Alert.alert("Success", "Profile updated successfully!", [
+        { text: "OK", onPress: () => router.back() },
+      ]);
     } catch (error: any) {
       console.log("[EditProfile] Error updating profile:", error);
       Alert.alert("Error", error.message || "Failed to update profile");
-      
+
       if (error.message?.includes("Authentication expired")) {
         router.replace("/(auth)/login");
       }
@@ -151,10 +160,12 @@ export default function EditProfilePage() {
     }
   };
 
+  const styles = createStyles(theme);
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#024974" />
+        <ActivityIndicator size="large" color={theme.primary} />
         <Text style={styles.loadingText}>Loading profile...</Text>
       </View>
     );
@@ -162,23 +173,33 @@ export default function EditProfilePage() {
 
   return (
     <>
-      <Stack.Screen options={{ 
-        headerShown: true,
-        title: "Edit Profile",
-        headerStyle: { backgroundColor: "#024974" },
-        headerTintColor: "white",
-        headerTitleStyle: { fontWeight: "bold" },
-      }} />
-      
-      <KeyboardAvoidingView 
+      <Stack.Screen
+        options={{
+          title: "Edit Profile",
+          headerBackTitle: "More",
+          headerStyle: {
+            backgroundColor: theme.surface,
+          },
+          headerTintColor: theme.primary,
+          headerTitleStyle: {
+            fontWeight: "bold",
+            color: theme.text,
+          },
+        }}
+      />
+
+      <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Personal Information */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Personal Information</Text>
-            
+
             <View style={styles.inputGroup}>
               <Text style={styles.label}>First Name *</Text>
               <TextInput
@@ -216,13 +237,15 @@ export default function EditProfilePage() {
           {/* Professional Information */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Professional Information</Text>
-            
+
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Years of Experience</Text>
               <TextInput
                 style={styles.input}
                 value={formData.experience.toString()}
-                onChangeText={(value) => updateFormData("experience", parseInt(value) || 0)}
+                onChangeText={(value) =>
+                  updateFormData("experience", parseInt(value) || 0)
+                }
                 placeholder="Enter years of experience"
                 keyboardType="numeric"
               />
@@ -232,13 +255,15 @@ export default function EditProfilePage() {
           {/* Address Information */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Address</Text>
-            
+
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Street Address</Text>
               <TextInput
                 style={styles.input}
                 value={formData.address.street}
-                onChangeText={(value) => updateFormData("address.street", value)}
+                onChangeText={(value) =>
+                  updateFormData("address.street", value)
+                }
                 placeholder="Enter street address"
               />
             </View>
@@ -248,7 +273,9 @@ export default function EditProfilePage() {
               <TextInput
                 style={styles.input}
                 value={formData.address.suburb}
-                onChangeText={(value) => updateFormData("address.suburb", value)}
+                onChangeText={(value) =>
+                  updateFormData("address.suburb", value)
+                }
                 placeholder="Enter suburb"
               />
             </View>
@@ -259,7 +286,9 @@ export default function EditProfilePage() {
                 <TextInput
                   style={styles.input}
                   value={formData.address.state}
-                  onChangeText={(value) => updateFormData("address.state", value)}
+                  onChangeText={(value) =>
+                    updateFormData("address.state", value)
+                  }
                   placeholder="State"
                   autoCapitalize="characters"
                 />
@@ -270,7 +299,9 @@ export default function EditProfilePage() {
                 <TextInput
                   style={styles.input}
                   value={formData.address.postcode}
-                  onChangeText={(value) => updateFormData("address.postcode", value)}
+                  onChangeText={(value) =>
+                    updateFormData("address.postcode", value)
+                  }
                   placeholder="Postcode"
                   keyboardType="numeric"
                 />
@@ -288,7 +319,11 @@ export default function EditProfilePage() {
               {saving ? (
                 <ActivityIndicator size="small" color="white" />
               ) : (
-                <MaterialCommunityIcons name="content-save" size={20} color="white" />
+                <MaterialCommunityIcons
+                  name="content-save"
+                  size={20}
+                  color="white"
+                />
               )}
               <Text style={styles.saveButtonText}>
                 {saving ? "Saving..." : "Save Changes"}
@@ -303,94 +338,95 @@ export default function EditProfilePage() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F9FAFB",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F9FAFB",
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: "#6B7280",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  section: {
-    backgroundColor: "white",
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#1F2937",
-    marginBottom: 16,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  inputHalf: {
-    flex: 1,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#374151",
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: "#1F2937",
-    backgroundColor: "white",
-  },
-  buttonContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 24,
-  },
-  saveButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#024974",
-    paddingVertical: 16,
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  saveButtonDisabled: {
-    backgroundColor: "#9CA3AF",
-    opacity: 0.7,
-  },
-  saveButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-    marginLeft: 8,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: theme.background,
+    },
+    loadingText: {
+      marginTop: 16,
+      fontSize: 16,
+      color: theme.textSecondary,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    section: {
+      backgroundColor: theme.surface,
+      marginHorizontal: 16,
+      marginTop: 16,
+      borderRadius: 12,
+      padding: 16,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: theme.text,
+      marginBottom: 16,
+    },
+    inputGroup: {
+      marginBottom: 16,
+    },
+    inputRow: {
+      flexDirection: "row",
+      gap: 12,
+    },
+    inputHalf: {
+      flex: 1,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.textSecondary,
+      marginBottom: 8,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      fontSize: 16,
+      color: theme.text,
+      backgroundColor: theme.surface,
+    },
+    buttonContainer: {
+      paddingHorizontal: 16,
+      paddingTop: 24,
+    },
+    saveButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.primary,
+      paddingVertical: 16,
+      borderRadius: 12,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    saveButtonDisabled: {
+      backgroundColor: theme.disabled,
+      opacity: 0.7,
+    },
+    saveButtonText: {
+      color: theme.surface,
+      fontSize: 16,
+      fontWeight: "bold",
+      marginLeft: 8,
+    },
+  });

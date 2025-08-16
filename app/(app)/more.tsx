@@ -83,9 +83,9 @@ export default function MorePage() {
       onPress: () => Alert.alert("Notifications", "Notification settings coming soon..."),
     },
     {
-      title: "Job History",
+      title: "Completed Job History",
       icon: "history",
-      onPress: () => Alert.alert("Job History", "Job history coming soon..."),
+      onPress: () => router.push("/completed-jobs"),
     },
     {
       title: "Help & Support",
