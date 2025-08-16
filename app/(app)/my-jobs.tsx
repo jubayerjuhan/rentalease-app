@@ -8,14 +8,13 @@ import {
   ActivityIndicator,
   Alert,
   TouchableOpacity,
-  Pressable,
-  ScrollView,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { fetchTechnicianJobs, Job } from "@services/jobs";
+import { fetchTechnicianJobs, completeJob, Job } from "@services/jobs";
 import { useRouter } from "expo-router";
 import { useTheme, Theme } from "../../contexts/ThemeContext";
 import { FilterPills } from "../../components/FilterPills";
+import { JobCompletionModal, JobCompletionData } from "../../components/JobCompletionModal";
 
 export default function ActiveJobsPage() {
   const router = useRouter();
@@ -25,6 +24,8 @@ export default function ActiveJobsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [error, setError] = useState<string | null>(null);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [selectedJobForCompletion, setSelectedJobForCompletion] = useState<Job | null>(null);
 
   const loadJobs = useCallback(
     async (isRefresh = false, status = "All") => {
@@ -81,8 +82,53 @@ export default function ActiveJobsPage() {
     setSelectedStatus(pill.id);
   }, []);
 
+  // Handle job completion
+  const handleCompleteJob = async (completionData: JobCompletionData) => {
+    if (!selectedJobForCompletion) return;
+
+    try {
+      console.log("[MyJobs] Completing job:", selectedJobForCompletion.id, completionData);
+      const result = await completeJob(selectedJobForCompletion.id, completionData);
+      console.log("[MyJobs] Job completed successfully:", result);
+      
+      // Update local jobs state
+      setJobs(prevJobs => 
+        prevJobs.map(job => 
+          job.id === selectedJobForCompletion.id 
+            ? { ...job, status: "Completed" }
+            : job
+        )
+      );
+      
+      Alert.alert(
+        "Success", 
+        "Job completed successfully!" + 
+        (completionData.hasInvoice ? " Invoice has been created." : "") +
+        (completionData.reportFile ? " Report has been uploaded." : ""),
+        [{ text: "OK" }]
+      );
+      
+      // Close modal and reset selected job
+      setShowCompletionModal(false);
+      setSelectedJobForCompletion(null);
+      
+      // Refresh jobs list
+      loadJobs(false, selectedStatus);
+    } catch (error: any) {
+      console.log("[MyJobs] Error completing job:", error);
+      Alert.alert("Error", error.message || "Failed to complete job");
+      throw error; // Re-throw to let modal handle the error state
+    }
+  };
+
+  // Open completion modal for a specific job
+  const openCompletionModal = (job: Job) => {
+    setSelectedJobForCompletion(job);
+    setShowCompletionModal(true);
+  };
+
   const getStatusInfo = (status: string) => {
-    const statusConfig = {
+    const statusConfig: Record<string, { color: string; bgColor: string; icon: string }> = {
       Scheduled: {
         color: "#3B82F6",
         bgColor: "#DBEAFE",
@@ -311,8 +357,9 @@ export default function ActiveJobsPage() {
                 <TouchableOpacity
                   style={[
                     styles.completeButton,
-                    { backgroundColor: theme.primary },
+                    { backgroundColor: theme.success },
                   ]}
+                  onPress={() => openCompletionModal(item)}
                 >
                   <MaterialCommunityIcons
                     name="check-circle"
@@ -445,6 +492,20 @@ export default function ActiveJobsPage() {
           updateCellsBatchingPeriod={50}
           initialNumToRender={5}
           windowSize={10}
+        />
+      )}
+
+      {/* Job Completion Modal */}
+      {selectedJobForCompletion && (
+        <JobCompletionModal
+          visible={showCompletionModal}
+          onClose={() => {
+            setShowCompletionModal(false);
+            setSelectedJobForCompletion(null);
+          }}
+          onSubmit={handleCompleteJob}
+          jobId={selectedJobForCompletion.job_id}
+          jobType={selectedJobForCompletion.jobType}
         />
       )}
     </View>

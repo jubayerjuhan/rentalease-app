@@ -78,12 +78,17 @@ export default function MorePage() {
       onPress: () => router.push("/profile/change-password"),
     },
     {
+      title: "My Payments",
+      icon: "wallet-outline",
+      onPress: () => router.push("/(app)/payments"),
+    },
+    {
       title: "Notifications",
       icon: "bell-outline",
       onPress: () => Alert.alert("Notifications", "Notification settings coming soon..."),
     },
     {
-      title: "Completed Job History",
+      title: "Job History",
       icon: "history",
       onPress: () => router.push("/completed-jobs"),
     },

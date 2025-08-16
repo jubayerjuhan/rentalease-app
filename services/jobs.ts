@@ -306,3 +306,88 @@ export async function fetchJobDetails(jobId: string): Promise<Job> {
     throw new Error(e?.message || "Network request failed");
   }
 }
+
+// Complete a job with optional report and invoice
+export async function completeJob(
+  jobId: string,
+  completionData: {
+    reportFile?: {
+      uri: string;
+      name: string;
+      type: string;
+      size: number;
+    };
+    hasInvoice: boolean;
+    invoiceData?: {
+      description: string;
+      lineItems: Array<{
+        id: string;
+        name: string;
+        quantity: number;
+        rate: number;
+        amount: number;
+      }>;
+      taxPercentage: number;
+      subtotal: number;
+      taxAmount: number;
+      total: number;
+      notes?: string;
+    };
+  }
+): Promise<{ message: string; job: Job }> {
+  const baseUrl = getBaseUrl();
+  const token = await getToken();
+
+  if (!token) {
+    throw new Error("No authentication token found");
+  }
+
+  try {
+    // Create FormData for multipart/form-data request
+    const formData = new FormData();
+    
+    // Add invoice flag
+    formData.append("hasInvoice", completionData.hasInvoice.toString());
+    
+    // Add invoice data if provided
+    if (completionData.hasInvoice && completionData.invoiceData) {
+      formData.append("invoiceData", JSON.stringify(completionData.invoiceData));
+    }
+    
+    // Add report file if provided
+    if (completionData.reportFile) {
+      formData.append("reportFile", {
+        uri: completionData.reportFile.uri,
+        type: completionData.reportFile.type,
+        name: completionData.reportFile.name,
+      } as any);
+    }
+
+    console.log("[completeJob] Sending completion data for job:", jobId);
+
+    const res = await fetch(`${baseUrl}/api/v1/jobs/${jobId}/complete`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+      body: formData,
+    });
+
+    const json = await res.json();
+    console.log("[completeJob] Response:", JSON.stringify(json, null, 2));
+
+    if (!res.ok) {
+      throw new Error(json?.message || "Failed to complete job");
+    }
+
+    return json.data || json;
+  } catch (e: any) {
+    console.log("[completeJob] error", {
+      name: e?.name,
+      message: e?.message,
+      stack: e?.stack,
+    });
+    throw new Error(e?.message || "Network request failed");
+  }
+}

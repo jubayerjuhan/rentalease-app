@@ -11,8 +11,9 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { fetchJobDetails, claimJob, Job } from "@services/jobs";
+import { fetchJobDetails, claimJob, completeJob, Job } from "@services/jobs";
 import { useTheme } from "../../contexts/ThemeContext";
+import { JobCompletionModal, JobCompletionData } from "../../components/JobCompletionModal";
 
 // Countdown Timer Component
 const CountdownTimer = ({
@@ -257,6 +258,7 @@ export default function JobDetailsPage() {
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [claimingJob, setClaimingJob] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
 
   const loadJobDetails = async () => {
     if (!id) return;
@@ -316,6 +318,53 @@ export default function JobDetailsPage() {
 
   const handleEmail = (email: string) => {
     Linking.openURL(`mailto:${email}`);
+  };
+
+  // Handle job completion
+  const handleCompleteJob = async (completionData: JobCompletionData) => {
+    if (!job) return;
+
+    try {
+      console.log("[JobDetails] Completing job:", job.id, completionData);
+      const result = await completeJob(job.id, completionData);
+      console.log("[JobDetails] Job completed successfully:", result);
+      
+      // Update local job state
+      setJob(prev => prev ? { ...prev, status: "Completed" } : prev);
+      
+      Alert.alert(
+        "Success", 
+        "Job completed successfully!" + 
+        (completionData.hasInvoice ? " Invoice has been created." : "") +
+        (completionData.reportFile ? " Report has been uploaded." : ""),
+        [{ text: "OK" }]
+      );
+      
+      // Refresh job data
+      await loadJobDetails();
+    } catch (error: any) {
+      console.log("[JobDetails] Error completing job:", error);
+      Alert.alert("Error", error.message || "Failed to complete job");
+      throw error; // Re-throw to let modal handle the error state
+    }
+  };
+
+  // Check if job can be completed
+  const canCompleteJob = () => {
+    if (!job) return false;
+    
+    // Only scheduled or in progress jobs can be completed
+    if (job.status !== "Scheduled" && job.status !== "In Progress") {
+      return false;
+    }
+    
+    // Check if job is due (due date is today or past)
+    const today = new Date();
+    const dueDate = new Date(job.dueDate);
+    today.setHours(0, 0, 0, 0);
+    dueDate.setHours(0, 0, 0, 0);
+    
+    return dueDate <= today;
   };
 
   if (loading) {
@@ -847,9 +896,9 @@ export default function JobDetailsPage() {
             </View>
           </View>
 
-          {/* Action Button */}
-          {job.status === "Pending" && (
-            <View style={styles.actionSection}>
+          {/* Action Buttons */}
+          <View style={styles.actionSection}>
+            {job.status === "Pending" && (
               <TouchableOpacity
                 style={[
                   styles.claimButton,
@@ -875,11 +924,49 @@ export default function JobDetailsPage() {
                   {claimingJob ? "Claiming..." : "Claim This Job"}
                 </Text>
               </TouchableOpacity>
-            </View>
-          )}
+            )}
+
+            {(job.status === "Scheduled" || job.status === "In Progress") && canCompleteJob() && (
+              <TouchableOpacity
+                style={[styles.completeButton, { backgroundColor: theme.success }]}
+                onPress={() => setShowCompletionModal(true)}
+              >
+                <MaterialCommunityIcons
+                  name="check-circle"
+                  size={24}
+                  color="white"
+                />
+                <Text style={styles.completeButtonText}>Complete Job</Text>
+              </TouchableOpacity>
+            )}
+
+            {(job.status === "Scheduled" || job.status === "In Progress") && !canCompleteJob() && (
+              <View style={[styles.notDueInfo, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <MaterialCommunityIcons
+                  name="information"
+                  size={20}
+                  color={theme.info}
+                />
+                <Text style={[styles.notDueText, { color: theme.textSecondary }]}>
+                  Job can be completed on or after the due date
+                </Text>
+              </View>
+            )}
+          </View>
 
           <View style={{ height: 100 }} />
         </ScrollView>
+
+        {/* Job Completion Modal */}
+        {job && (
+          <JobCompletionModal
+            visible={showCompletionModal}
+            onClose={() => setShowCompletionModal(false)}
+            onSubmit={handleCompleteJob}
+            jobId={job.job_id}
+            jobType={job.jobType}
+          />
+        )}
       </View>
     </>
   );
@@ -1137,6 +1224,36 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     marginLeft: 8,
+  },
+  completeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  completeButtonText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginLeft: 8,
+  },
+  notDueInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  notDueText: {
+    fontSize: 14,
+    marginLeft: 8,
+    flex: 1,
   },
   countdownCard: {
     backgroundColor: "white",

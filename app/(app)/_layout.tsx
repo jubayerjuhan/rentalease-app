@@ -99,6 +99,19 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="payments"
+        options={{
+          title: "Payments",
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialCommunityIcons
+              name={focused ? "wallet" : "wallet-outline"}
+              size={24}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="more"
         options={{
           title: "More",
