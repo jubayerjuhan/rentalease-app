@@ -351,7 +351,9 @@ export async function completeJob(
     
     // Add invoice data if provided
     if (completionData.hasInvoice && completionData.invoiceData) {
-      formData.append("invoiceData", JSON.stringify(completionData.invoiceData));
+      const invoiceDataString = JSON.stringify(completionData.invoiceData);
+      console.log("[completeJob] Invoice data string:", invoiceDataString);
+      formData.append("invoiceData", invoiceDataString);
     }
     
     // Add report file if provided

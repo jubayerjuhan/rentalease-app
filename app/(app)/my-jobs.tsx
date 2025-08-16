@@ -140,7 +140,7 @@ export default function ActiveJobsPage() {
         bgColor: "#D1FAE5",
         icon: "play-circle",
       },
-      Completed: { color: "#6B7280", bgColor: "#F3F4F6", icon: "check-circle" },
+      Completed: { color: "#10B981", bgColor: isDark ? "#064E3B" : "#D1FAE5", icon: "check-circle" },
       Cancelled: { color: "#EF4444", bgColor: "#FEE2E2", icon: "close-circle" },
     };
     return (
@@ -212,7 +212,7 @@ export default function ActiveJobsPage() {
             styles.jobCard,
             {
               backgroundColor: theme.card,
-              borderLeftColor: isDue ? theme.error : theme.primary,
+              borderLeftColor: isDue ? theme.error : (item.status === "Completed" ? "#10B981" : theme.primary),
               borderWidth: isDue ? 2 : 0,
               borderColor: isDue ? theme.error : "transparent",
             },
@@ -224,16 +224,20 @@ export default function ActiveJobsPage() {
                 style={[
                   styles.jobIdContainer,
                   {
-                    backgroundColor: isDark ? theme.primary + "20" : "#F0F9FF",
+                    backgroundColor: item.status === "Completed" 
+                      ? "#10B981"
+                      : (isDark ? "#10B981" + "20" : "#D1FAE5"),
                   },
                 ]}
               >
                 <MaterialCommunityIcons
                   name="briefcase-outline"
                   size={16}
-                  color={theme.primary}
+                  color={item.status === "Completed" ? "white" : "#10B981"}
                 />
-                <Text style={[styles.jobId, { color: theme.primary }]}>
+                <Text style={[styles.jobId, { 
+                  color: item.status === "Completed" ? "white" : "#10B981" 
+                }]}>
                   {item.job_id}
                 </Text>
               </View>
@@ -324,7 +328,7 @@ export default function ActiveJobsPage() {
                   <MaterialCommunityIcons
                     name="phone"
                     size={16}
-                    color={theme.primary}
+                    color="#10B981"
                   />
                 </TouchableOpacity>
               )}
@@ -373,16 +377,16 @@ export default function ActiveJobsPage() {
             <TouchableOpacity
               style={[
                 styles.viewButton,
-                { backgroundColor: theme.surface, borderColor: theme.primary },
+                { backgroundColor: theme.surface, borderColor: "#10B981" },
               ]}
               onPress={handleJobPress}
             >
               <MaterialCommunityIcons
                 name="eye"
                 size={20}
-                color={theme.primary}
+                color="#10B981"
               />
-              <Text style={[styles.viewButtonText, { color: theme.primary }]}>
+              <Text style={[styles.viewButtonText, { color: "#10B981" }]}>
                 View Details
               </Text>
             </TouchableOpacity>
@@ -478,6 +482,7 @@ export default function ActiveJobsPage() {
               refreshing={refreshing}
               onRefresh={onRefresh}
               colors={[theme.primary]}
+              tintColor="white"
             />
           }
           ListEmptyComponent={renderEmptyState}
@@ -598,7 +603,7 @@ const createStyles = (theme: Theme) =>
     jobIdContainer: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: "#F0F9FF",
+      backgroundColor: "#D1FAE5",
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 20,
@@ -606,7 +611,7 @@ const createStyles = (theme: Theme) =>
     jobId: {
       fontSize: 13,
       fontWeight: "600",
-      color: theme.primary,
+      color: "#10B981",
       marginLeft: 6,
     },
     priorityBadge: {
@@ -692,12 +697,12 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
       backgroundColor: "white",
       borderWidth: 1,
-      borderColor: theme.primary,
+      borderColor: "#10B981",
       paddingVertical: 12,
       borderRadius: 8,
     },
     viewButtonText: {
-      color: theme.primary,
+      color: "#10B981",
       fontSize: 16,
       fontWeight: "600",
       marginLeft: 6,

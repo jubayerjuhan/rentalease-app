@@ -172,7 +172,18 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       );
 
       if (validLineItems.length === 0) {
-        Alert.alert('Validation Error', 'Please add at least one valid line item');
+        Alert.alert('Validation Error', 'Please add at least one valid line item with name, quantity, and rate');
+        return false;
+      }
+
+      // Additional validation for invoice data
+      if (validLineItems.some(item => !item.name.trim())) {
+        Alert.alert('Validation Error', 'All line items must have a name');
+        return false;
+      }
+
+      if (validLineItems.some(item => item.quantity <= 0 || item.rate <= 0)) {
+        Alert.alert('Validation Error', 'All line items must have positive quantity and rate');
         return false;
       }
     }
@@ -202,15 +213,24 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
           item.name.trim() && item.quantity > 0 && item.rate > 0
         );
 
-        completionData.invoiceData = {
-          description: invoiceDescription,
-          lineItems: validLineItems,
+        const invoiceData = {
+          description: invoiceDescription.trim(),
+          items: validLineItems.map(item => ({
+            name: item.name.trim(),
+            quantity: item.quantity,
+            rate: item.rate,
+            amount: item.amount,
+          })),
+          lineItems: validLineItems, // Keep both for compatibility
           taxPercentage,
           subtotal,
           taxAmount,
           total,
           notes: invoiceNotes.trim() || undefined,
         };
+
+        console.log('[JobCompletionModal] Invoice data being sent:', JSON.stringify(invoiceData, null, 2));
+        completionData.invoiceData = invoiceData;
       }
 
       await onSubmit(completionData);

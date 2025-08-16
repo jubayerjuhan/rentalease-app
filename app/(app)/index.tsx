@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Platform,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { PieChart, BarChart } from "react-native-chart-kit";
@@ -57,7 +58,7 @@ export default function HomePage() {
     loadDashboardData(true);
   };
 
-  const styles = createStyles(theme);
+  const styles = createStyles(theme, isDark);
 
   if (loading) {
     return (
@@ -76,26 +77,57 @@ export default function HomePage() {
     );
   }
 
-  // Prepare chart data
-  const pieChartData = dashboardData.jobStatusDistribution.map(
-    (item, index) => ({
-      name: item.status,
-      count: item.count,
-      color: getStatusColor(item.status, index),
+  // Prepare chart data - focus on three main categories with softer colors
+  const pieChartData = [
+    {
+      name: "Completed",
+      count: dashboardData.quickStats.completedJobs,
+      color: isDark ? "#4ADE80" : "#86EFAC", // Softer green
       legendFontColor: theme.text,
       legendFontSize: 12,
-    })
-  );
+    },
+    {
+      name: "Active Jobs", 
+      count: dashboardData.quickStats.activeJobs,
+      color: isDark ? "#60A5FA" : "#93C5FD", // Softer blue
+      legendFontColor: theme.text,
+      legendFontSize: 12,
+    },
+    {
+      name: "Overdue",
+      count: dashboardData.quickStats.overdueJobs,
+      color: isDark ? "#F87171" : "#FCA5A5", // Softer red
+      legendFontColor: theme.text,
+      legendFontSize: 12,
+    },
+  ].filter(item => item.count > 0); // Only show categories with actual data
+
+  // Sort weekly progress data to show current week properly (starting from current day)
+  const dayOrder = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const currentDay = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
+  
+  // Create a complete week starting from current day
+  const reorderedDays = [];
+  for (let i = 0; i < 7; i++) {
+    const dayIndex = (currentDay + i) % 7;
+    reorderedDays.push(dayOrder[dayIndex]);
+  }
+  
+  // Map the backend data to ensure all 7 days are present
+  const sortedWeeklyProgress = reorderedDays.map(day => {
+    const existingData = dashboardData.weeklyProgress.find(item => item.day === day);
+    return existingData || { day, completed: 0, scheduled: 0 };
+  });
 
   const barChartData = {
-    labels: dashboardData.weeklyProgress.map((item) => item.day),
+    labels: sortedWeeklyProgress.map((item) => item.day),
     datasets: [
       {
-        data: dashboardData.weeklyProgress.map((item) => item.completed),
+        data: sortedWeeklyProgress.map((item) => item.completed),
         color: () => theme.primary,
       },
       {
-        data: dashboardData.weeklyProgress.map((item) => item.scheduled),
+        data: sortedWeeklyProgress.map((item) => item.scheduled),
         color: () => theme.success,
       },
     ],
@@ -129,6 +161,7 @@ export default function HomePage() {
           icon="briefcase"
           color={theme.primary}
           theme={theme}
+          isDark={isDark}
         />
         <StatCard
           title="Active Jobs"
@@ -136,6 +169,7 @@ export default function HomePage() {
           icon="clock-outline"
           color={theme.success}
           theme={theme}
+          isDark={isDark}
         />
         <StatCard
           title="Completed"
@@ -143,6 +177,7 @@ export default function HomePage() {
           icon="check-circle"
           color={theme.success}
           theme={theme}
+          isDark={isDark}
         />
         <StatCard
           title="Overdue"
@@ -150,11 +185,12 @@ export default function HomePage() {
           icon="alert-circle"
           color={theme.error}
           theme={theme}
+          isDark={isDark}
         />
       </View>
 
       {/* Job Status Distribution Chart */}
-      <View style={styles.chartContainer}>
+      <View style={styles.glassyChartContainer}>
         <Text style={styles.chartTitle}>Job Status Distribution</Text>
         <PieChart
           data={pieChartData}
@@ -162,11 +198,18 @@ export default function HomePage() {
           height={220}
           chartConfig={{
             color: () => theme.primary,
+            backgroundGradientFrom: "transparent",
+            backgroundGradientTo: "transparent",
+            decimalPlaces: 0,
           }}
           accessor="count"
           backgroundColor="transparent"
           paddingLeft="15"
           absolute
+          hasLegend={true}
+          style={{
+            borderRadius: 16,
+          }}
         />
       </View>
 
@@ -276,12 +319,6 @@ export default function HomePage() {
             <View style={styles.jobInfo}>
               <Text style={styles.jobId}>{job.job_id}</Text>
               <Text style={styles.jobType}>{job.jobType}</Text>
-              <Text style={styles.jobProperty}>
-                {typeof job.property === "string"
-                  ? job.property
-                  : job.property?.address?.fullAddress ||
-                    "Property address not available"}
-              </Text>
             </View>
             <View style={styles.jobStatus}>
               <View
@@ -315,14 +352,16 @@ const StatCard = ({
   icon,
   color,
   theme,
+  isDark,
 }: {
   title: string;
   value: number;
   icon: string;
   color: string;
   theme: Theme;
+  isDark: boolean;
 }) => {
-  const styles = createStyles(theme);
+  const styles = createStyles(theme, isDark);
   return (
     <View style={styles.statCard}>
       <MaterialCommunityIcons name={icon as any} size={24} color={color} />
@@ -333,6 +372,37 @@ const StatCard = ({
 };
 
 // Helper Functions
+const getPropertyAddress = (job: RecentJob) => {
+  // Handle different property data structures
+  if (typeof job.property === "string") {
+    return job.property;
+  }
+  
+  if (job.property && typeof job.property === "object") {
+    // Try to get full address from nested structure
+    const address = job.property.address;
+    if (address) {
+      if (typeof address === "string") {
+        return address;
+      }
+      if (address.fullAddress) {
+        return address.fullAddress;
+      }
+      // Construct address from parts if available
+      const parts = [];
+      if (address.street) parts.push(address.street);
+      if (address.suburb) parts.push(address.suburb);
+      if (address.state) parts.push(address.state);
+      if (address.postcode) parts.push(address.postcode);
+      if (parts.length > 0) {
+        return parts.join(", ");
+      }
+    }
+  }
+  
+  return "Property address not available";
+};
+
 const getStatusColor = (status: string, index: number) => {
   const colors: Record<string, string> = {
     Completed: "#22C55E",
@@ -383,7 +453,7 @@ const formatDateTime = (dateString: string) => {
   });
 };
 
-const createStyles = (theme: Theme) => StyleSheet.create({
+const createStyles = (theme: Theme, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background,
@@ -467,6 +537,29 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  glassyChartContainer: {
+    backgroundColor: isDark 
+      ? 'rgba(30, 41, 59, 0.9)' // Semi-transparent dark surface
+      : 'rgba(255, 255, 255, 0.95)', // Semi-transparent light surface
+    marginHorizontal: 16,
+    marginBottom: 20,
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: isDark 
+      ? 'rgba(14, 165, 233, 0.3)' // Glowing border for dark
+      : 'rgba(14, 165, 233, 0.2)', // Subtle border for light
+    shadowColor: isDark ? '#0EA5E9' : '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 12,
+    },
+    shadowOpacity: isDark ? 0.4 : 0.15,
+    shadowRadius: 24,
+    elevation: 16,
+    // Additional glassy effects
+    overflow: 'hidden',
   },
   chartTitle: {
     fontSize: 18,

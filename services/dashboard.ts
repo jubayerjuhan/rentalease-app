@@ -54,8 +54,12 @@ export type RecentJob = {
   dueDate: string;
   updatedAt: string;
   property: string | {
-    address?: {
+    address?: string | {
       fullAddress?: string;
+      street?: string;
+      suburb?: string;
+      state?: string;
+      postcode?: string;
     };
   };
 };

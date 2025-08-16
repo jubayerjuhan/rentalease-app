@@ -69,6 +69,8 @@ export default function JobsPage() {
   const router = useRouter();
   const { theme, isDark } = useTheme();
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [allJobs, setAllJobs] = useState<Job[]>([]); // Store all jobs for client-side filtering
+  const [filteredJobs, setFilteredJobs] = useState<Job[]>([]); // Store filtered results
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -93,17 +95,31 @@ export default function JobsPage() {
       const data = await fetchAvailableJobs({
         ...filters,
         page: filters.page || 1,
-        limit: 15,
-        search: searchQuery || undefined,
+        limit: 50, // Get more jobs for better client-side filtering
+        // Remove server-side search to implement client-side search
       });
 
       if (filters.page === 1 || isRefresh) {
+        setAllJobs(data.jobs);
         setJobs(data.jobs);
+        // Apply current search and filters
+        applyFiltersAndSearch(data.jobs, searchQuery, selectedFilter);
       } else {
-        setJobs((prev) => [...prev, ...data.jobs]);
+        const newAllJobs = [...allJobs, ...data.jobs];
+        setAllJobs(newAllJobs);
+        setJobs(newAllJobs);
+        // Apply current search and filters
+        applyFiltersAndSearch(newAllJobs, searchQuery, selectedFilter);
       }
 
-      setPagination(data.pagination);
+      setPagination({
+        currentPage: data.pagination.page,
+        totalPages: data.pagination.totalPages,
+        totalItems: data.pagination.total,
+        itemsPerPage: data.pagination.limit,
+        hasNextPage: data.pagination.page < data.pagination.totalPages,
+        hasPrevPage: data.pagination.page > 1,
+      });
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to load jobs");
     } finally {
@@ -116,12 +132,118 @@ export default function JobsPage() {
     loadJobs();
   }, []);
 
+  // Apply filters when jobs are loaded
+  useEffect(() => {
+    if (allJobs.length > 0) {
+      applyFiltersAndSearch(allJobs, searchQuery, selectedFilter);
+    }
+  }, [allJobs]);
+
   const onRefresh = () => {
     loadJobs(true, { page: 1 });
   };
 
+  // Enhanced search function that searches across multiple fields
+  const searchJobs = (jobs: Job[], query: string): Job[] => {
+    if (!query.trim()) return jobs;
+    
+    const searchTerm = query.toLowerCase().trim();
+    
+    return jobs.filter(job => {
+      // Search in job ID
+      if (job.job_id.toLowerCase().includes(searchTerm)) return true;
+      
+      // Search in job type
+      if (job.jobType.toLowerCase().includes(searchTerm)) return true;
+      
+      // Search in description
+      if (job.description.toLowerCase().includes(searchTerm)) return true;
+      
+      // Search in property address
+      if (job.property.address) {
+        if (typeof job.property.address === 'string') {
+          if (job.property.address.toLowerCase().includes(searchTerm)) return true;
+        } else {
+          const address = job.property.address;
+          if (address.fullAddress?.toLowerCase().includes(searchTerm)) return true;
+          if (address.street?.toLowerCase().includes(searchTerm)) return true;
+          if (address.suburb?.toLowerCase().includes(searchTerm)) return true;
+          if (address.state?.toLowerCase().includes(searchTerm)) return true;
+          if (address.postcode?.toLowerCase().includes(searchTerm)) return true;
+        }
+      }
+      
+      // Search in property type
+      if (job.property.propertyType?.toLowerCase().includes(searchTerm)) return true;
+      
+      // Search in region
+      if (job.property.region?.toLowerCase().includes(searchTerm)) return true;
+      
+      // Search in agency name
+      if (job.property.agency?.companyName?.toLowerCase().includes(searchTerm)) return true;
+      
+      // Search in tenant name
+      if (job.property.currentTenant?.name?.toLowerCase().includes(searchTerm)) return true;
+      
+      // Search in landlord name
+      if (job.property.currentLandlord?.name?.toLowerCase().includes(searchTerm)) return true;
+      
+      // Search in priority
+      if (job.priority.toLowerCase().includes(searchTerm)) return true;
+      
+      // Search in notes
+      if (job.notes?.toLowerCase().includes(searchTerm)) return true;
+      
+      return false;
+    });
+  };
+
+  // Apply filters and search to jobs
+  const applyFiltersAndSearch = (jobsList: Job[], query: string, filter: string) => {
+    let filtered = [...jobsList];
+
+    // Apply search filter
+    if (query.trim()) {
+      filtered = searchJobs(filtered, query);
+    }
+
+    // Apply priority/status filter
+    if (filter !== "All") {
+      switch (filter) {
+        case "Due Jobs":
+          filtered = filtered.filter(job => isJobDue(job.dueDate));
+          break;
+        case "High Priority":
+          filtered = filtered.filter(job => job.priority === "High" || job.priority === "Critical");
+          break;
+        case "Medium Priority":
+          filtered = filtered.filter(job => job.priority === "Medium");
+          break;
+        case "Low Priority":
+          filtered = filtered.filter(job => job.priority === "Low");
+          break;
+        default:
+          break;
+      }
+    }
+
+    setFilteredJobs(filtered);
+  };
+
+  // Handle search input changes (real-time search)
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+    applyFiltersAndSearch(allJobs, text, selectedFilter);
+  };
+
+  // Handle filter changes
+  const handleFilterChange = (filter: { id: string; label: string }) => {
+    setSelectedFilter(filter.id);
+    applyFiltersAndSearch(allJobs, searchQuery, filter.id);
+  };
+
   const onSearch = () => {
-    loadJobs(false, { page: 1 });
+    applyFiltersAndSearch(allJobs, searchQuery, selectedFilter);
   };
 
   const onLoadMore = () => {
@@ -448,7 +570,7 @@ export default function JobsPage() {
             placeholder="Search jobs..."
             placeholderTextColor={theme.placeholder}
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={handleSearchChange}
             onSubmitEditing={onSearch}
             returnKeyType="search"
           />
@@ -470,7 +592,7 @@ export default function JobsPage() {
       <FilterPills
         pills={filterOptions}
         selectedPill={selectedFilter}
-        onPillPress={applyFilter}
+        onPillPress={handleFilterChange}
         style={{ marginBottom: 8 }}
       />
 
@@ -484,7 +606,7 @@ export default function JobsPage() {
         </View>
       ) : (
         <FlatList
-          data={selectedFilter === "Due Jobs" ? jobs.filter(job => isJobDue(job.dueDate)) : jobs}
+          data={(searchQuery.trim() || selectedFilter !== "All" ? filteredJobs : jobs).slice(0, 2)}
           keyExtractor={(item, index) => `${item.id}-${item.job_id}-${index}`}
           renderItem={renderJobCard}
           refreshControl={
