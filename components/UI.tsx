@@ -1,13 +1,23 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, ColorValue, GestureResponderEvent, Image, Pressable, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle, TouchableOpacity } from 'react-native';
-import { useColorScheme } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Colors } from '../theme';
+import { useTheme as useAppTheme } from '../contexts/ThemeContext';
 
 export function useTheme() {
-  const scheme = useColorScheme();
-  const mode = scheme === 'dark' ? 'dark' : 'light';
-  return { mode, colors: Colors[mode] };
+  const { theme, isDark } = useAppTheme();
+  return { 
+    mode: isDark ? 'dark' : 'light', 
+    colors: {
+      background: theme.background,
+      text: theme.text,
+      primary: theme.primary,
+      accent: theme.primary,
+      inputBg: theme.surface,
+      inputBorder: theme.border,
+      placeholder: theme.placeholder,
+      danger: theme.error,
+    }
+  };
 }
 
 type ButtonProps = {
@@ -30,16 +40,16 @@ export function PrimaryButton({ title, onPress, style, disabled, loading, varian
         styles.button,
         {
           backgroundColor: isOutline ? 'transparent' : colors.primary,
-          borderColor: colors.accent as ColorValue,
+          borderColor: colors.primary as ColorValue,
           opacity: pressed ? 0.9 : 1,
         },
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={isOutline ? colors.accent : '#FFFFFF'} />
+        <ActivityIndicator color={isOutline ? colors.primary : '#FFFFFF'} />
       ) : (
-        <Text style={[styles.buttonText, { color: isOutline ? colors.accent : '#FFFFFF' }]}>{title}</Text>
+        <Text style={[styles.buttonText, { color: isOutline ? colors.primary : '#FFFFFF' }]}>{title}</Text>
       )}
     </Pressable>
   );
@@ -130,7 +140,7 @@ export function LinkText({ children, onPress }: { children: React.ReactNode; onP
   const { colors } = useTheme();
   return (
     <Pressable onPress={onPress} style={{ paddingVertical: 8 }}>
-      <Text style={{ color: colors.accent, textAlign: 'center', fontSize: 16 }}>{children}</Text>
+      <Text style={{ color: colors.primary, textAlign: 'center', fontSize: 16 }}>{children}</Text>
     </Pressable>
   );
 }
@@ -143,6 +153,43 @@ export function Logo({ size = 160 }: { size?: number }) {
         style={{ width: size, aspectRatio: 1, resizeMode: 'contain' }}
       />
     </View>
+  );
+}
+
+export function ThemeToggle() {
+  const { theme, isDark, toggleTheme } = useAppTheme();
+  
+  const handleToggle = () => {
+    // Immediate haptic feedback
+    try {
+      const Haptics = require('expo-haptics');
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (error) {
+      console.log('Haptics not available:', error);
+    }
+    
+    // Immediate theme toggle
+    toggleTheme();
+  };
+  
+  return (
+    <TouchableOpacity
+      style={[
+        styles.themeToggle, 
+        { 
+          backgroundColor: theme.surface, 
+          borderColor: theme.border,
+        }
+      ]}
+      onPress={handleToggle}
+      activeOpacity={0.6}
+    >
+      <MaterialCommunityIcons
+        name={isDark ? 'weather-night' : 'weather-sunny'}
+        size={20}
+        color={theme.text}
+      />
+    </TouchableOpacity>
   );
 }
 
@@ -208,5 +255,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 6,
     marginBottom: 8,
+  },
+  themeToggle: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 });

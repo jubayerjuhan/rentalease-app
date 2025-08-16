@@ -104,13 +104,26 @@ export default function MorePage() {
     },
   ];
 
+  const handleThemeToggle = () => {
+    // Immediate haptic feedback
+    try {
+      const Haptics = require('expo-haptics');
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (error) {
+      console.log('Haptics not available:', error);
+    }
+
+    // Immediate theme toggle
+    toggleTheme();
+  };
+
   const settingsItems = [
     {
       title: "Dark Mode",
       icon: isDark ? "weather-night" : "weather-sunny",
       isToggle: true,
       value: isDark,
-      onToggle: toggleTheme,
+      onToggle: handleThemeToggle,
     },
   ];
 
@@ -126,7 +139,7 @@ export default function MorePage() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       {/* Profile Section */}
       <View style={styles.profileSection}>
         <View style={styles.avatarContainer}>
@@ -204,6 +217,9 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background,
+  },
+  scrollContent: {
+    paddingBottom: 110, // Ensure content doesn't hide under tab bar
   },
   loadingContainer: {
     flex: 1,

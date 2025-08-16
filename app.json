@@ -3,6 +3,7 @@
     "name": "RentalEase_Technician",
     "slug": "RentalEase_Technician",
     "version": "1.0.0",
+    "owner": "juhan.rokoautomations",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -14,6 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.rentalease.technician",
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
@@ -26,7 +28,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": ["INTERNET"]
+      "permissions": ["INTERNET"],
+      "package": "com.rentalease.technician"
     },
     "web": {
       "favicon": "./assets/favicon.png"

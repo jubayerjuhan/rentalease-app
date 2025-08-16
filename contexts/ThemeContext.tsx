@@ -129,7 +129,7 @@ export const darkTheme: Theme = {
 interface ThemeContextType {
   theme: Theme;
   themeMode: ThemeMode;
-  toggleTheme: () => void;
+  toggleTheme: (position?: { x: number; y: number }) => void;
   isDark: boolean;
 }
 
@@ -138,7 +138,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const THEME_STORAGE_KEY = 'app_theme_mode';
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [themeMode, setThemeMode] = useState<ThemeMode>('light');
+  const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
   const [isLoading, setIsLoading] = useState(true);
 
   // Load saved theme preference
@@ -159,16 +159,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     loadTheme();
   }, []);
 
-  const toggleTheme = async () => {
+  const toggleTheme = async (position?: { x: number; y: number }) => {
     const newTheme: ThemeMode = themeMode === 'light' ? 'dark' : 'light';
-    setThemeMode(newTheme);
     
+    // Immediate theme change without any animation
+    setThemeMode(newTheme);
     try {
       await AsyncStorage.setItem(THEME_STORAGE_KEY, newTheme);
     } catch (error) {
       console.log('Error saving theme preference:', error);
     }
   };
+
 
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const isDark = themeMode === 'dark';

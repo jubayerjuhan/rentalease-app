@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { InputField, PrimaryButton, ScreenContainer, Subtitle, Title, useTheme, LinkText } from '@components/UI';
+import { InputField, PrimaryButton, ScreenContainer, Subtitle, Title, useTheme, LinkText, ThemeToggle } from '@components/UI';
 import { technicianResetPassword } from '@services/auth';
 
 export default function ResetPasswordPage() {
@@ -48,53 +48,61 @@ export default function ResetPasswordPage() {
 
   return (
     <ScreenContainer>
-      <KeyboardAvoidingView behavior={Platform.select({ ios: 'padding', android: undefined })} style={styles.form}>
-        <View style={{ width: '100%', maxWidth: 480, alignItems: 'center' }}>
-          <Title>Reset Password</Title>
-          <Subtitle>Enter the OTP you received and your new password.</Subtitle>
+      <View style={styles.container}>
+        <ThemeToggle />
+        <KeyboardAvoidingView behavior={Platform.select({ ios: 'padding', android: undefined })} style={styles.form}>
+          <View style={{ width: '100%', maxWidth: 480, alignItems: 'center' }}>
+            <Title>Reset Password</Title>
+            <Subtitle>Enter the OTP you received and your new password.</Subtitle>
 
-          <InputField
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            placeholder="Email address"
-            value={email}
-            onChangeText={setEmail}
-            error={errors.email}
-          />
-          <InputField
-            keyboardType="number-pad"
-            maxLength={6}
-            placeholder="6-digit OTP"
-            value={otp}
-            onChangeText={setOtp}
-            error={errors.otp}
-          />
-          <InputField
-            secureTextEntry
-            placeholder="New password"
-            value={newPassword}
-            onChangeText={setNewPassword}
-            error={errors.newPassword}
-          />
-          <InputField
-            secureTextEntry
-            placeholder="Confirm new password"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            error={errors.confirmPassword}
-          />
+            <InputField
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder="Email address"
+              value={email}
+              onChangeText={setEmail}
+              error={errors.email}
+            />
+            <InputField
+              keyboardType="number-pad"
+              maxLength={6}
+              placeholder="6-digit OTP"
+              value={otp}
+              onChangeText={setOtp}
+              error={errors.otp}
+            />
+            <InputField
+              secureTextEntry
+              placeholder="New password"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              error={errors.newPassword}
+            />
+            <InputField
+              secureTextEntry
+              placeholder="Confirm new password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              error={errors.confirmPassword}
+            />
 
-          <PrimaryButton title={loading ? 'Resetting...' : 'Reset Password'} onPress={onSubmit} loading={loading} />
-          <LinkText onPress={() => router.back()}>Back</LinkText>
-        </View>
-      </KeyboardAvoidingView>
+            <PrimaryButton title={loading ? 'Resetting...' : 'Reset Password'} onPress={onSubmit} loading={loading} />
+            <LinkText onPress={() => router.back()}>Back</LinkText>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    width: '100%',
+  },
   form: {
+    flex: 1,
     width: '100%',
     paddingHorizontal: 16,
     alignItems: 'center',

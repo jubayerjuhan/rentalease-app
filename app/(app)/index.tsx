@@ -111,6 +111,7 @@ export default function HomePage() {
           colors={[theme.primary]}
         />
       }
+      contentContainerStyle={{ paddingBottom: 110 }}
     >
       {/* Header */}
       <View style={styles.header}>
@@ -549,7 +550,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   recentJobsContainer: {
     backgroundColor: theme.surface,
     marginHorizontal: 16,
-    marginBottom: 110,
+    marginBottom: 20,
     borderRadius: 12,
     padding: 16,
     shadowColor: theme.shadow,
