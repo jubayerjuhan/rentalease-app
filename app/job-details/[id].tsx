@@ -815,6 +815,89 @@ export default function JobDetailsPage() {
               </View>
             </View>
 
+            {/* Property Manager */}
+            <View style={[styles.card, { backgroundColor: theme.card }]}>
+              <Text style={[styles.cardSubtitle, { color: theme.text }]}>
+                Property Manager
+              </Text>
+              <View style={styles.contactRow}>
+                <MaterialCommunityIcons
+                  name="account-star"
+                  size={20}
+                  color={theme.textSecondary}
+                />
+                <View style={styles.contactInfo}>
+                  <Text style={[styles.contactName, { color: theme.text }]}>
+                    {job.property?.propertyManager?.name ||
+                      job.property?.agency?.contactPerson ||
+                      "N/A"}
+                  </Text>
+                  <View style={styles.contactActions}>
+                    <TouchableOpacity
+                      style={[
+                        styles.contactButton,
+                        {
+                          backgroundColor: isDark
+                            ? theme.primary + "20"
+                            : "#F0F9FF",
+                        },
+                      ]}
+                      onPress={() => {
+                        const phone = job.property?.propertyManager?.phone || job.property?.agency?.phone;
+                        phone && handleCall(phone);
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="phone"
+                        size={16}
+                        color={theme.primary}
+                      />
+                      <Text
+                        style={[
+                          styles.contactButtonText,
+                          { color: theme.primary },
+                        ]}
+                      >
+                        {job.property?.propertyManager?.phone ||
+                          job.property?.agency?.phone ||
+                          "Phone not available"}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.contactButton,
+                        {
+                          backgroundColor: isDark
+                            ? theme.primary + "20"
+                            : "#F0F9FF",
+                        },
+                      ]}
+                      onPress={() => {
+                        const email = job.property?.propertyManager?.email || job.property?.agency?.email;
+                        email && handleEmail(email);
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="email"
+                        size={16}
+                        color={theme.primary}
+                      />
+                      <Text
+                        style={[
+                          styles.contactButtonText,
+                          { color: theme.primary },
+                        ]}
+                      >
+                        {job.property?.propertyManager?.email ||
+                          job.property?.agency?.email ||
+                          "Email not available"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </View>
+
             {/* Landlord */}
             <View style={[styles.card, { backgroundColor: theme.card }]}>
               <Text style={[styles.cardSubtitle, { color: theme.text }]}>

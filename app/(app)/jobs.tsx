@@ -315,7 +315,7 @@ export default function JobsPage() {
         styles.jobCard,
         { 
           backgroundColor: theme.card, 
-          borderLeftColor: isDue ? theme.error : theme.primary,
+          borderLeftColor: isDue ? theme.error : (item.status === "Completed" ? "#10B981" : theme.primary),
           borderWidth: isDue ? 2 : 0,
           borderColor: isDue ? theme.error : "transparent",
         },
@@ -327,15 +327,21 @@ export default function JobsPage() {
           <View
             style={[
               styles.jobIdContainer,
-              { backgroundColor: isDark ? theme.primary + "20" : "#F0F9FF" },
+              { 
+                backgroundColor: item.status === "Completed" 
+                  ? "#10B981"
+                  : (isDark ? theme.primary + "20" : "#F0F9FF")
+              },
             ]}
           >
             <MaterialCommunityIcons
               name="briefcase-outline"
               size={16}
-              color={theme.primary}
+              color={item.status === "Completed" ? "white" : theme.primary}
             />
-            <Text style={[styles.jobId, { color: theme.primary }]}>
+            <Text style={[styles.jobId, { 
+              color: item.status === "Completed" ? "white" : theme.primary 
+            }]}>
               {item.job_id}
             </Text>
           </View>
@@ -387,9 +393,11 @@ export default function JobsPage() {
           <MaterialCommunityIcons
             name={getJobTypeIcon(item.jobType)}
             size={16}
-            color={theme.success}
+            color={item.status === "Completed" ? "#10B981" : theme.primary}
           />
-          <Text style={[styles.jobType, { color: theme.success }]}>
+          <Text style={[styles.jobType, { 
+            color: item.status === "Completed" ? "#10B981" : theme.primary 
+          }]}>
             {item.jobType}
           </Text>
         </View>
@@ -433,6 +441,17 @@ export default function JobsPage() {
 
         <View style={styles.detailRow}>
           <MaterialCommunityIcons
+            name="account-star"
+            size={16}
+            color={theme.textSecondary}
+          />
+          <Text style={[styles.detailText, { color: theme.textSecondary }]}>
+            Property Manager: {item.property?.propertyManager?.name || item.property?.agency?.contactPerson || "N/A"}
+          </Text>
+        </View>
+
+        <View style={styles.detailRow}>
+          <MaterialCommunityIcons
             name="office-building"
             size={16}
             color={theme.textSecondary}
@@ -467,7 +486,9 @@ export default function JobsPage() {
         <TouchableOpacity
           style={[
             styles.claimButton,
-            { backgroundColor: theme.primary },
+            { 
+              backgroundColor: item.status === "Completed" ? "#10B981" : theme.primary 
+            },
             claimingJobs.has(item.id) && {
               backgroundColor: theme.disabled,
               opacity: 0.7,
@@ -493,12 +514,21 @@ export default function JobsPage() {
         <TouchableOpacity
           style={[
             styles.viewButton,
-            { backgroundColor: theme.surface, borderColor: theme.primary },
+            { 
+              backgroundColor: theme.surface, 
+              borderColor: item.status === "Completed" ? "#10B981" : theme.primary 
+            },
           ]}
           onPress={() => router.push(`/job-details/${item.id}`)}
         >
-          <MaterialCommunityIcons name="eye" size={20} color={theme.primary} />
-          <Text style={[styles.viewButtonText, { color: theme.primary }]}>
+          <MaterialCommunityIcons 
+            name="eye" 
+            size={20} 
+            color={item.status === "Completed" ? "#10B981" : theme.primary} 
+          />
+          <Text style={[styles.viewButtonText, { 
+            color: item.status === "Completed" ? "#10B981" : theme.primary 
+          }]}>
             View Details
           </Text>
         </TouchableOpacity>
@@ -949,7 +979,7 @@ const styles = StyleSheet.create({
   },
   jobType: {
     fontSize: 14,
-    color: "#10B981",
+    color: "#024974",
     fontWeight: "600",
     marginLeft: 6,
   },

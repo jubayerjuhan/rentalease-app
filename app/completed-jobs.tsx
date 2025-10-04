@@ -231,6 +231,17 @@ export default function CompletedJobsPage() {
 
           <View style={styles.detailRow}>
             <MaterialCommunityIcons
+              name="account-star"
+              size={16}
+              color={theme.textSecondary}
+            />
+            <Text style={[styles.detailText, { color: theme.textSecondary }]}>
+              Property Manager: {item.property?.propertyManager?.name || item.property?.agency?.contactPerson || "N/A"}
+            </Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <MaterialCommunityIcons
               name="office-building"
               size={16}
               color={theme.textSecondary}

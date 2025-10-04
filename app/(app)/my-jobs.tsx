@@ -226,17 +226,17 @@ export default function ActiveJobsPage() {
                   {
                     backgroundColor: item.status === "Completed" 
                       ? "#10B981"
-                      : (isDark ? "#10B981" + "20" : "#D1FAE5"),
+                      : (isDark ? theme.primary + "20" : "#F0F9FF"),
                   },
                 ]}
               >
                 <MaterialCommunityIcons
                   name="briefcase-outline"
                   size={16}
-                  color={item.status === "Completed" ? "white" : "#10B981"}
+                  color={item.status === "Completed" ? "white" : theme.primary}
                 />
                 <Text style={[styles.jobId, { 
-                  color: item.status === "Completed" ? "white" : "#10B981" 
+                  color: item.status === "Completed" ? "white" : theme.primary 
                 }]}>
                   {item.job_id}
                 </Text>
@@ -328,10 +328,21 @@ export default function ActiveJobsPage() {
                   <MaterialCommunityIcons
                     name="phone"
                     size={16}
-                    color="#10B981"
+                    color={item.status === "Completed" ? "#10B981" : theme.primary}
                   />
                 </TouchableOpacity>
               )}
+            </View>
+
+            <View style={styles.detailRow}>
+              <MaterialCommunityIcons
+                name="account-star"
+                size={16}
+                color={theme.textSecondary}
+              />
+              <Text style={[styles.detailText, { color: theme.textSecondary }]}>
+                Property Manager: {item.property?.propertyManager?.name || item.property?.agency?.contactPerson || "N/A"}
+              </Text>
             </View>
 
             <View style={styles.detailRow}>
@@ -377,16 +388,16 @@ export default function ActiveJobsPage() {
             <TouchableOpacity
               style={[
                 styles.viewButton,
-                { backgroundColor: theme.surface, borderColor: "#10B981" },
+                { backgroundColor: theme.surface, borderColor: item.status === "Completed" ? "#10B981" : theme.primary },
               ]}
               onPress={handleJobPress}
             >
               <MaterialCommunityIcons
                 name="eye"
                 size={20}
-                color="#10B981"
+                color={item.status === "Completed" ? "#10B981" : theme.primary}
               />
-              <Text style={[styles.viewButtonText, { color: "#10B981" }]}>
+              <Text style={[styles.viewButtonText, { color: item.status === "Completed" ? "#10B981" : theme.primary }]}>
                 View Details
               </Text>
             </TouchableOpacity>
@@ -603,7 +614,7 @@ const createStyles = (theme: Theme) =>
     jobIdContainer: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: "#D1FAE5",
+      backgroundColor: "#F0F9FF",
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 20,
@@ -611,7 +622,7 @@ const createStyles = (theme: Theme) =>
     jobId: {
       fontSize: 13,
       fontWeight: "600",
-      color: "#10B981",
+      color: theme.primary,
       marginLeft: 6,
     },
     priorityBadge: {
@@ -697,12 +708,12 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
       backgroundColor: "white",
       borderWidth: 1,
-      borderColor: "#10B981",
+      borderColor: theme.primary,
       paddingVertical: 12,
       borderRadius: 8,
     },
     viewButtonText: {
-      color: "#10B981",
+      color: theme.primary,
       fontSize: 16,
       fontWeight: "600",
       marginLeft: 6,

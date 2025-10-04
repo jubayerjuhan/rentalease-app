@@ -52,6 +52,11 @@ export type Job = {
       email: string;
       phone: string;
     };
+    propertyManager?: {
+      name: string;
+      email?: string;
+      phone?: string;
+    };
     propertyType?: string;
     region?: string;
     agency?: {
