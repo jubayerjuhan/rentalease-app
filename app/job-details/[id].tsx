@@ -333,10 +333,12 @@ export default function JobDetailsPage() {
       setJob(prev => prev ? { ...prev, status: "Completed" } : prev);
       
       Alert.alert(
-        "Success", 
-        "Job completed successfully!" + 
-        (completionData.hasInvoice ? " Invoice has been created." : "") +
-        (completionData.reportFile ? " Report has been uploaded." : ""),
+        "Success",
+        "Job completed successfully!" +
+          (completionData.hasInvoice ? " Invoice has been created." : "") +
+          (completionData.inspectionReportId
+            ? " Inspection report has been submitted."
+            : ""),
         [{ text: "OK" }]
       );
       

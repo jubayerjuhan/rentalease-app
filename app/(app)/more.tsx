@@ -78,11 +78,6 @@ export default function MorePage() {
       onPress: () => router.push("/profile/change-password"),
     },
     {
-      title: "My Payments",
-      icon: "wallet-outline",
-      onPress: () => router.push("/(app)/payments"),
-    },
-    {
       title: "Notifications",
       icon: "bell-outline",
       onPress: () => Alert.alert("Notifications", "Notification settings coming soon..."),
@@ -95,7 +90,7 @@ export default function MorePage() {
     {
       title: "Help & Support",
       icon: "help-circle-outline",
-      onPress: () => Alert.alert("Help", "Help & Support coming soon..."),
+      onPress: () => router.push("/help"),
     },
     {
       title: "Terms & Privacy",

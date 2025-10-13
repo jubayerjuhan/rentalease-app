@@ -4,6 +4,7 @@ import { getToken } from "./secureStore";
 const RAW_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined;
 
 function getBaseUrl(): string {
+  console.log(RAW_BASE_URL, "Base URL");
   if (!RAW_BASE_URL) {
     throw new Error(
       "Missing EXPO_PUBLIC_API_BASE_URL. Set it in .env (e.g., http://localhost:4000) and restart the dev server."
@@ -30,18 +31,27 @@ export type Job = {
   id: string;
   job_id: string;
   jobType: string;
-  status: "Available" | "Pending" | "Scheduled" | "In Progress" | "Active" | "Completed" | "Cancelled";
+  status:
+    | "Available"
+    | "Pending"
+    | "Scheduled"
+    | "In Progress"
+    | "Active"
+    | "Completed"
+    | "Cancelled";
   priority: "Low" | "Medium" | "High" | "Critical" | "Urgent";
   title?: string;
   description: string;
   property: {
-    address?: {
-      street: string;
-      suburb: string;
-      state: string;
-      postcode: string;
-      fullAddress: string;
-    } | string;
+    address?:
+      | {
+          street: string;
+          suburb: string;
+          state: string;
+          postcode: string;
+          fullAddress: string;
+        }
+      | string;
     currentTenant?: {
       name: string;
       email: string;
@@ -99,6 +109,210 @@ export type JobFilters = {
   limit?: number;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
+};
+
+export type InspectionFieldType =
+  | "text"
+  | "textarea"
+  | "number"
+  | "boolean"
+  | "select"
+  | "multi-select"
+  | "date"
+  | "time"
+  | "photo"
+  | "photo-multi"
+  | "rating"
+  | "signature"
+  | "checkbox-group";
+
+export type InspectionFieldOption = {
+  value: string;
+  label: string;
+};
+
+export type InspectionField = {
+  id: string;
+  label: string;
+  type: InspectionFieldType;
+  required?: boolean;
+  placeholder?: string;
+  helpText?: string;
+  options?: InspectionFieldOption[];
+  min?: number;
+  max?: number;
+  step?: number;
+  metadata?: Record<string, any>;
+};
+
+export type InspectionSection = {
+  id: string;
+  title: string;
+  description?: string;
+  fields: InspectionField[];
+};
+
+export type InspectionTemplate = {
+  id?: string;
+  jobType: string;
+  title: string;
+  version: number;
+  metadata?: Record<string, any>;
+  sections: InspectionSection[];
+};
+
+export type InspectionTemplateResponse = {
+  id: string;
+  jobType: string;
+  title: string;
+  version: number;
+  metadata?: Record<string, any>;
+  sections: InspectionSection[];
+};
+
+export type InspectionMediaUpload = {
+  uri: string;
+  name: string;
+  type: string;
+  size?: number;
+};
+
+export type InspectionSubmissionPayload = {
+  template: InspectionTemplate;
+  formValues: Record<string, Record<string, any>>;
+  mediaByField: Record<string, InspectionMediaUpload[]>;
+  notes?: string;
+};
+
+export type InspectionReportSummary = {
+  id: string;
+  job: any;
+  property: any;
+  technician: any;
+  jobType: string;
+  templateVersion: number;
+  submittedAt: string;
+  pdf?: {
+    url?: string;
+  };
+  notes?: string;
+};
+
+export const fetchInspectionTemplates = async (): Promise<
+  InspectionTemplate[]
+> => {
+  const baseUrl = getBaseUrl();
+  const token = await getToken();
+
+  const res = await fetch(`${baseUrl}/api/v1/inspections/templates`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json?.message || "Failed to load inspection templates");
+  }
+
+  return json.data as InspectionTemplate[];
+};
+
+export const fetchInspectionTemplate = async (
+  jobType: string
+): Promise<InspectionTemplate> => {
+  const baseUrl = getBaseUrl();
+  const token = await getToken();
+
+  const res = await fetch(
+    `${baseUrl}/api/v1/inspections/templates/${encodeURIComponent(jobType)}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json?.message || "Failed to load inspection template");
+  }
+
+  return json.data as InspectionTemplate;
+};
+
+export const submitInspectionReport = async (
+  jobId: string,
+  payload: InspectionSubmissionPayload
+): Promise<{
+  report: InspectionReportSummary;
+  pdf?: { url?: string };
+}> => {
+  const baseUrl = getBaseUrl();
+  const token = await getToken();
+
+  if (!token) {
+    throw new Error("No authentication token found");
+  }
+
+  const formData = new FormData();
+  formData.append("jobType", payload.template.jobType);
+  formData.append("templateVersion", String(payload.template.version));
+  formData.append("formData", JSON.stringify(payload.formValues));
+
+  if (payload.notes) {
+    formData.append("notes", payload.notes);
+  }
+
+  const mediaMeta: Record<string, any> = {};
+  payload.template.sections.forEach((section) => {
+    section.fields.forEach((field) => {
+      const items = payload.mediaByField[field.id];
+      if (items && items.length) {
+        mediaMeta[field.id] = {
+          label: field.label,
+          metadata: {
+            sectionId: section.id,
+            count: items.length,
+          },
+        };
+
+        items.forEach((item, index) => {
+          formData.append(`media__${field.id}`, {
+            uri: item.uri,
+            name:
+              item.name ||
+              `${field.id}-${index + 1}.${item.type?.split("/").pop()}`,
+            type: item.type || "image/jpeg",
+          } as any);
+        });
+      }
+    });
+  });
+
+  if (Object.keys(mediaMeta).length) {
+    formData.append("mediaMeta", JSON.stringify(mediaMeta));
+  }
+
+  const res = await fetch(`${baseUrl}/api/v1/inspections/jobs/${jobId}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "multipart/form-data",
+    },
+    body: formData,
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json?.message || "Failed to submit inspection report");
+  }
+
+  return json.data;
 };
 
 // Fetch available jobs
@@ -216,7 +430,10 @@ export async function fetchTechnicianJobs(
     });
 
     const json = await res.json();
-    console.log("[fetchTechnicianJobs] Response:", JSON.stringify(json, null, 2));
+    console.log(
+      "[fetchTechnicianJobs] Response:",
+      JSON.stringify(json, null, 2)
+    );
 
     if (!res.ok) {
       // Handle specific authentication errors
@@ -322,6 +539,7 @@ export async function completeJob(
       type: string;
       size: number;
     };
+    inspectionReportId?: string;
     hasInvoice: boolean;
     invoiceData?: {
       description: string;
@@ -350,17 +568,20 @@ export async function completeJob(
   try {
     // Create FormData for multipart/form-data request
     const formData = new FormData();
-    
     // Add invoice flag
     formData.append("hasInvoice", completionData.hasInvoice.toString());
-    
+
+    if (completionData.inspectionReportId) {
+      formData.append("inspectionReportId", completionData.inspectionReportId);
+    }
+
     // Add invoice data if provided
     if (completionData.hasInvoice && completionData.invoiceData) {
       const invoiceDataString = JSON.stringify(completionData.invoiceData);
       console.log("[completeJob] Invoice data string:", invoiceDataString);
       formData.append("invoiceData", invoiceDataString);
     }
-    
+
     // Add report file if provided
     if (completionData.reportFile) {
       formData.append("reportFile", {
