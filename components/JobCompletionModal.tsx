@@ -76,7 +76,28 @@ const initializeFormValues = (
   template: InspectionTemplate
 ): InspectionFormValues => {
   return template.sections.reduce((acc, section) => {
-    acc[section.id] = {};
+    const sectionValues: Record<string, any> = {};
+    section.fields.forEach((field) => {
+      if (field.type === "table") {
+        const columns = field.columns || field.metadata?.columns || [];
+        if (field.required && columns.length) {
+          const emptyRow = columns.reduce((row, column) => {
+            row[column.id] = "";
+            return row;
+          }, {} as Record<string, any>);
+          sectionValues[field.id] = [emptyRow];
+        } else {
+          sectionValues[field.id] = [];
+        }
+      } else if (field.type === "multi-select") {
+        sectionValues[field.id] = [];
+      } else if (field.type === "boolean") {
+        sectionValues[field.id] = false;
+      } else {
+        sectionValues[field.id] = "";
+      }
+    });
+    acc[section.id] = sectionValues;
     return acc;
   }, {} as InspectionFormValues);
 };
