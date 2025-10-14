@@ -331,6 +331,29 @@ export default function JobDetailsPage() {
     Linking.openURL(`mailto:${email}`);
   };
 
+  const handleOpenReport = async (url: string) => {
+    if (!url) {
+      return;
+    }
+
+    try {
+      const supported = await Linking.canOpenURL(url);
+
+      if (supported) {
+        await Linking.openURL(url);
+        return;
+      }
+
+      Alert.alert(
+        "Unable to open report",
+        "We couldn't find an app to open this report link."
+      );
+    } catch (error) {
+      console.log("[JobDetails] Error opening report:", error);
+      Alert.alert("Error", "Failed to open the report. Please try again.");
+    }
+  };
+
   // Handle job completion
   const handleCompleteJob = async (completionData: JobCompletionData) => {
     console.log(job, "Job");
@@ -455,6 +478,13 @@ export default function JobDetailsPage() {
   };
 
   const isDue = isJobDue();
+  const latestInspectionReport = job.latestInspectionReport;
+  const reportUrl =
+    latestInspectionReport?.pdf?.url ||
+    (typeof job.reportFile === "string" && job.reportFile.trim()
+      ? job.reportFile
+      : undefined);
+  const reportSubmittedAt = latestInspectionReport?.submittedAt;
 
   return (
     <>
@@ -1032,6 +1062,99 @@ export default function JobDetailsPage() {
             </View>
           </View>
 
+          {job.status === "Completed" && (
+            <View style={styles.section}>
+              <View style={styles.sectionTitleRow}>
+                <MaterialCommunityIcons
+                  name="file-document"
+                  size={24}
+                  color={theme.primary}
+                />
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                  Job Report
+                </Text>
+              </View>
+
+              <View style={[styles.card, { backgroundColor: theme.card }]}>
+                <View style={styles.reportHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.cardSubtitle, { color: theme.text }]}>
+                      Inspection Report
+                    </Text>
+                    <Text
+                      style={[styles.reportMeta, { color: theme.textSecondary }]}
+                    >
+                      {reportSubmittedAt
+                        ? `Submitted ${formatDate(reportSubmittedAt)}`
+                        : "Awaiting submission"}
+                    </Text>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.reportStatusBadge,
+                      {
+                        backgroundColor: reportUrl
+                          ? (theme.success || "#10B981") + "20"
+                          : (theme.warning || "#F59E0B") + "20",
+                      },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name={reportUrl ? "check-circle" : "clock-outline"}
+                      size={16}
+                      color={reportUrl ? theme.success || "#10B981" : theme.warning || "#F59E0B"}
+                    />
+                    <Text
+                      style={[
+                        styles.reportStatusText,
+                        {
+                          color: reportUrl
+                            ? theme.success || "#10B981"
+                            : theme.warning || "#F59E0B",
+                        },
+                      ]}
+                    >
+                      {reportUrl ? "AVAILABLE" : "PENDING"}
+                    </Text>
+                  </View>
+                </View>
+
+                {latestInspectionReport?.jobType && (
+                  <Text
+                    style={[styles.reportMeta, { color: theme.textSecondary }]}
+                  >
+                    Report Type: {latestInspectionReport.jobType}
+                  </Text>
+                )}
+
+                {reportUrl ? (
+                  <TouchableOpacity
+                    style={[
+                      styles.reportButton,
+                      { backgroundColor: theme.primary },
+                    ]}
+                    onPress={() => handleOpenReport(reportUrl)}
+                  >
+                    <MaterialCommunityIcons
+                      name="file-pdf-box"
+                      size={20}
+                      color="white"
+                    />
+                    <Text style={styles.reportButtonText}>View Report</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Text
+                    style={[styles.reportEmpty, { color: theme.textSecondary }]}
+                  >
+                    Report is being generated. Please refresh this page in a
+                    few minutes.
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
+
           {/* Action Buttons */}
           <View style={styles.actionSection}>
             {job.status === "Pending" && (
@@ -1375,6 +1498,48 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#024974",
     marginLeft: 6,
+  },
+  reportHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 8,
+    gap: 16,
+  },
+  reportMeta: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  reportStatusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+  },
+  reportStatusText: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  reportButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 16,
+    gap: 8,
+  },
+  reportButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  reportEmpty: {
+    fontSize: 14,
+    marginTop: 12,
   },
   actionSection: {
     paddingHorizontal: 16,

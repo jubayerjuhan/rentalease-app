@@ -88,6 +88,28 @@ export type Job = {
   notes?: string;
   assignedTechnician?: any;
   isOverdue?: boolean;
+  reportFile?: string | null;
+  latestInspectionReport?: {
+    id?: string;
+    _id?: string;
+    jobType?: string;
+    submittedAt?: string;
+    pdf?: {
+      url?: string;
+    } | null;
+  } | null;
+  inspectionReports?: Array<{
+    id?: string;
+    _id?: string;
+    submittedAt?: string;
+    pdf?: {
+      url?: string;
+    } | null;
+  }>;
+  hasInvoice?: boolean;
+  invoice?: any;
+  completedAt?: string;
+  updatedAt?: string;
 };
 
 export type JobsResponse = {
