@@ -8,6 +8,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "packageManager": "pnpm",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
