@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,11 @@ import {
   Switch,
   Image,
   Alert,
+  Platform,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from "../contexts/ThemeContext";
 import type {
   InspectionTemplate,
@@ -19,6 +21,142 @@ import type {
 } from "@services/jobs";
 
 export type InspectionFormValues = Record<string, Record<string, any>>;
+
+interface DatePickerFieldProps {
+  value: string | null | undefined;
+  onChange: (date: string) => void;
+  placeholder: string;
+  editable: boolean;
+  theme: any;
+}
+
+const DatePickerField: React.FC<DatePickerFieldProps> = ({
+  value,
+  onChange,
+  placeholder,
+  editable,
+  theme,
+}) => {
+  const [showPicker, setShowPicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    if (value) {
+      const date = new Date(value);
+      return isNaN(date.getTime()) ? new Date() : date;
+    }
+    return new Date();
+  });
+
+  const handleDateChange = (event: any, date?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowPicker(false);
+      if (date && event.type !== 'dismissed') {
+        setSelectedDate(date);
+        const formattedDate = date.toISOString().split('T')[0];
+        onChange(formattedDate);
+      }
+    } else {
+      // On iOS, update immediately as user scrolls
+      if (date) {
+        setSelectedDate(date);
+        const formattedDate = date.toISOString().split('T')[0];
+        onChange(formattedDate);
+      }
+    }
+  };
+
+  const handleIOSConfirm = () => {
+    setShowPicker(false);
+  };
+
+  const handleIOSCancel = () => {
+    setShowPicker(false);
+    // Reset to original date if cancelled
+    if (value) {
+      const originalDate = new Date(value);
+      if (!isNaN(originalDate.getTime())) {
+        setSelectedDate(originalDate);
+      }
+    }
+  };
+
+  const handlePress = () => {
+    if (editable) {
+      setShowPicker(true);
+    }
+  };
+
+  const formatDisplayDate = (dateString: string | null | undefined) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "";
+      return date.toLocaleDateString();
+    } catch {
+      return "";
+    }
+  };
+
+  return (
+    <View>
+      <TouchableOpacity
+        style={[
+          styles.datePickerButton,
+          {
+            borderColor: theme.border,
+            backgroundColor: editable ? theme.surface || theme.card : theme.disabled
+          }
+        ]}
+        onPress={handlePress}
+        disabled={!editable}
+      >
+        <Text
+          style={[
+            styles.datePickerText,
+            {
+              color: value ? theme.text : theme.placeholder
+            }
+          ]}
+        >
+          {value ? formatDisplayDate(value) : placeholder}
+        </Text>
+        <MaterialCommunityIcons
+          name="calendar"
+          size={20}
+          color={theme.textSecondary}
+        />
+      </TouchableOpacity>
+
+      {showPicker && Platform.OS === 'ios' && (
+        <View style={styles.iosPickerContainer}>
+          <View style={[styles.iosPickerHeader, { borderBottomColor: theme.border }]}>
+            <TouchableOpacity onPress={handleIOSCancel} style={styles.iosPickerButton}>
+              <Text style={[styles.iosPickerButtonText, { color: theme.textSecondary }]}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleIOSConfirm} style={styles.iosPickerButton}>
+              <Text style={[styles.iosPickerButtonText, { color: theme.primary }]}>Done</Text>
+            </TouchableOpacity>
+          </View>
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display="spinner"
+            onChange={handleDateChange}
+            style={styles.iosDatePicker}
+          />
+        </View>
+      )}
+
+      {showPicker && Platform.OS === 'android' && (
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+        />
+      )}
+    </View>
+  );
+};
 
 interface InspectionFormProps {
   template: InspectionTemplate;
@@ -49,7 +187,12 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
     field: InspectionField,
     currentCount: number
   ) => {
-    if (!editable) return;
+    console.log("[InspectionForm] handlePickImage called for field:", field.id, "currentCount:", currentCount);
+
+    if (!editable) {
+      console.log("[InspectionForm] Form not editable, returning");
+      return;
+    }
 
     const maxPhotos =
       typeof field.metadata?.max === "number" ? field.metadata.max : undefined;
@@ -62,32 +205,125 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
       );
       return;
     }
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(
-        "Permission required",
-        "Camera roll permission is needed to attach inspection photos."
-      );
-      return;
+
+    console.log("[InspectionForm] Showing action sheet for photo selection");
+
+    // Show action sheet to choose camera or photo library
+    Alert.alert(
+      "Add Photo",
+      "Choose photo source",
+      [
+        {
+          text: "Camera",
+          onPress: () => {
+            console.log("[InspectionForm] Camera option selected");
+            handleCameraLaunch(field);
+          },
+        },
+        {
+          text: "Photo Library",
+          onPress: () => {
+            console.log("[InspectionForm] Photo Library option selected");
+            handlePhotoLibraryLaunch(field);
+          },
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () => {
+            console.log("[InspectionForm] Photo selection canceled");
+          },
+        },
+      ]
+    );
+  };
+
+  const handleCameraLaunch = async (field: InspectionField) => {
+    try {
+      console.log("[InspectionForm] Camera launch initiated for field:", field.id);
+
+      // Request camera permissions
+      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+      console.log("[InspectionForm] Camera permission result:", cameraPermission);
+
+      if (!cameraPermission.granted) {
+        Alert.alert(
+          "Camera Permission Required",
+          "Camera permission is needed to take inspection photos."
+        );
+        return;
+      }
+
+      console.log("[InspectionForm] Launching camera...");
+      const result = await ImagePicker.launchCameraAsync({
+        quality: 0.7,
+        allowsEditing: true,
+        aspect: [4, 3],
+      });
+
+      console.log("[InspectionForm] Camera result:", result);
+
+      if (!result.canceled && result.assets?.length) {
+        const asset = result.assets[0];
+        const media: InspectionMediaUpload = {
+          uri: asset.uri,
+          name:
+            asset.fileName ||
+            `${field.id}-${Date.now()}.${asset.mimeType?.split("/").pop() || "jpg"}`,
+          type: asset.mimeType || "image/jpeg",
+          size: asset.fileSize,
+        };
+        console.log("[InspectionForm] Adding media:", media);
+        onAddMedia(field.id, media);
+      }
+    } catch (error) {
+      console.error("[InspectionForm] Camera error:", error);
+      Alert.alert("Camera Error", "Failed to access camera. Please try again.");
     }
+  };
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsMultipleSelection: false,
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.7,
-    });
+  const handlePhotoLibraryLaunch = async (field: InspectionField) => {
+    try {
+      console.log("[InspectionForm] Photo library launch initiated for field:", field.id);
 
-    if (!result.canceled && result.assets?.length) {
-      const asset = result.assets[0];
-      const media: InspectionMediaUpload = {
-        uri: asset.uri,
-        name:
-          asset.fileName ||
-          `${field.id}-${Date.now()}.${asset.mimeType?.split("/").pop() || "jpg"}`,
-        type: asset.mimeType || "image/jpeg",
-        size: asset.fileSize,
-      };
-      onAddMedia(field.id, media);
+      // Request media library permissions
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      console.log("[InspectionForm] Photo library permission result:", permission);
+
+      if (!permission.granted) {
+        Alert.alert(
+          "Photo Library Permission Required",
+          "Photo library permission is needed to attach inspection photos."
+        );
+        return;
+      }
+
+      console.log("[InspectionForm] Launching photo library...");
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsMultipleSelection: false,
+        quality: 0.7,
+        allowsEditing: true,
+        aspect: [4, 3],
+      });
+
+      console.log("[InspectionForm] Photo library result:", result);
+
+      if (!result.canceled && result.assets?.length) {
+        const asset = result.assets[0];
+        const media: InspectionMediaUpload = {
+          uri: asset.uri,
+          name:
+            asset.fileName ||
+            `${field.id}-${Date.now()}.${asset.mimeType?.split("/").pop() || "jpg"}`,
+          type: asset.mimeType || "image/jpeg",
+          size: asset.fileSize,
+        };
+        console.log("[InspectionForm] Adding media:", media);
+        onAddMedia(field.id, media);
+      }
+    } catch (error) {
+      console.error("[InspectionForm] Photo library error:", error);
+      Alert.alert("Photo Library Error", "Failed to access photo library. Please try again.");
     }
   };
 
@@ -223,6 +459,174 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
                 </TouchableOpacity>
               );
             })}
+          </View>
+        );
+      case "yes-no":
+        return (
+          <View style={styles.optionList}>
+            {[
+              { value: "yes", label: "Yes" },
+              { value: "no", label: "No" }
+            ].map((option) => {
+              const isSelected = fieldValue === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.optionChip,
+                    {
+                      borderColor: isSelected ? theme.primary : theme.border,
+                      backgroundColor: isSelected
+                        ? theme.primary
+                        : theme.card,
+                    },
+                  ]}
+                  onPress={() => editable && onChange(sectionId, field.id, option.value)}
+                  disabled={!editable}
+                >
+                  <Text
+                    style={{
+                      color: isSelected ? "#fff" : theme.text,
+                      fontWeight: isSelected ? "600" : "500",
+                    }}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        );
+      case "yes-no-na":
+        return (
+          <View style={styles.optionList}>
+            {[
+              { value: "yes", label: "Yes" },
+              { value: "no", label: "No" },
+              { value: "na", label: "N/A" }
+            ].map((option) => {
+              const isSelected = fieldValue === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.optionChip,
+                    {
+                      borderColor: isSelected ? theme.primary : theme.border,
+                      backgroundColor: isSelected
+                        ? theme.primary
+                        : theme.card,
+                    },
+                  ]}
+                  onPress={() => editable && onChange(sectionId, field.id, option.value)}
+                  disabled={!editable}
+                >
+                  <Text
+                    style={{
+                      color: isSelected ? "#fff" : theme.text,
+                      fontWeight: isSelected ? "600" : "500",
+                    }}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        );
+      case "pass-fail":
+        return (
+          <View style={styles.optionList}>
+            {[
+              { value: "pass", label: "Pass" },
+              { value: "fail", label: "Fail" }
+            ].map((option) => {
+              const isSelected = fieldValue === option.value;
+              const isPass = option.value === "pass";
+              const isFail = option.value === "fail";
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.optionChip,
+                    {
+                      borderColor: isSelected
+                        ? (isPass ? "#10B981" : isFail ? "#EF4444" : theme.primary)
+                        : theme.border,
+                      backgroundColor: isSelected
+                        ? (isPass ? "#10B981" : isFail ? "#EF4444" : theme.primary)
+                        : theme.card,
+                    },
+                  ]}
+                  onPress={() => editable && onChange(sectionId, field.id, option.value)}
+                  disabled={!editable}
+                >
+                  <Text
+                    style={{
+                      color: isSelected ? "#fff" : theme.text,
+                      fontWeight: isSelected ? "600" : "500",
+                    }}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        );
+      case "date":
+        return (
+          <DatePickerField
+            value={fieldValue}
+            onChange={(date) => onChange(sectionId, field.id, date)}
+            placeholder={field.placeholder || "Select date"}
+            editable={editable}
+            theme={theme}
+          />
+        );
+      case "signature":
+        return (
+          <View style={styles.signatureContainer}>
+            <View style={[styles.signatureBox, { borderColor: theme.border }]}>
+              {fieldValue ? (
+                <View style={styles.signaturePresent}>
+                  <MaterialCommunityIcons
+                    name="check-circle"
+                    size={24}
+                    color={theme.success || "#10B981"}
+                  />
+                  <Text style={[styles.signatureText, { color: theme.success || "#10B981" }]}>
+                    Signature Captured
+                  </Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.signatureButton}
+                  onPress={() => {
+                    if (editable) {
+                      // In a real app, you'd open a signature capture modal
+                      // For now, just set a placeholder signature
+                      onChange(sectionId, field.id, `signature_${Date.now()}`);
+                    }
+                  }}
+                  disabled={!editable}
+                >
+                  <MaterialCommunityIcons
+                    name="draw"
+                    size={24}
+                    color={theme.primary}
+                  />
+                  <Text style={[styles.signatureButtonText, { color: theme.primary }]}>
+                    Tap to Sign
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {field.helpText && (
+              <Text style={[styles.helpText, { color: theme.textSecondary }]}>
+                {field.helpText}
+              </Text>
+            )}
           </View>
         );
       case "photo":
@@ -434,6 +838,74 @@ const styles = StyleSheet.create({
   unsupported: {
     fontSize: 13,
     fontStyle: "italic",
+  },
+  signatureContainer: {
+    gap: 8,
+  },
+  signatureBox: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 16,
+    minHeight: 80,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  signaturePresent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  signatureText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  signatureButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  signatureButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  datePickerButton: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    minHeight: 44,
+  },
+  datePickerText: {
+    fontSize: 14,
+    flex: 1,
+  },
+  iosPickerContainer: {
+    backgroundColor: "white",
+    borderRadius: 10,
+    marginTop: 10,
+    overflow: "hidden",
+  },
+  iosPickerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  iosPickerButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  iosPickerButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  iosDatePicker: {
+    backgroundColor: "white",
   },
 });
 

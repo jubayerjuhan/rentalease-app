@@ -298,6 +298,20 @@ export const submitInspectionReport = async (
     formData.append("mediaMeta", JSON.stringify(mediaMeta));
   }
 
+  const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(jobId);
+  console.log("[submitInspectionReport] Request details:", {
+    url: `${baseUrl}/api/v1/inspections/jobs/${jobId}`,
+    jobId: jobId,
+    jobIdType: typeof jobId,
+    jobIdLength: jobId?.length,
+    isValidObjectId: isValidObjectId
+  });
+
+  if (!isValidObjectId) {
+    console.error("[submitInspectionReport] ERROR: Invalid MongoDB ObjectId format:", jobId);
+    throw new Error(`Invalid job ID format: ${jobId}. Expected 24-character MongoDB ObjectId.`);
+  }
+
   const res = await fetch(`${baseUrl}/api/v1/inspections/jobs/${jobId}`, {
     method: "POST",
     headers: {
@@ -592,12 +606,24 @@ export async function completeJob(
     }
 
     console.log("[completeJob] Sending completion data for job:", jobId);
+    console.log(
+      "[completeJob] Full URL:",
+      `${baseUrl}/api/v1/jobs/${jobId}/complete`
+    );
+    console.log("[completeJob] FormData contents:");
+    console.log("- hasInvoice:", completionData.hasInvoice.toString());
+    if (completionData.inspectionReportId) {
+      console.log("- inspectionReportId:", completionData.inspectionReportId);
+    }
+    if (completionData.hasInvoice && completionData.invoiceData) {
+      console.log("- invoiceData:", JSON.stringify(completionData.invoiceData));
+    }
 
     const res = await fetch(`${baseUrl}/api/v1/jobs/${jobId}/complete`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${token}`,
-        "Content-Type": "multipart/form-data",
+        // Don't set Content-Type for FormData, let the browser set it
       },
       body: formData,
     });

@@ -13,7 +13,10 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { fetchJobDetails, claimJob, completeJob, Job } from "@services/jobs";
 import { useTheme } from "../../contexts/ThemeContext";
-import { JobCompletionModal, JobCompletionData } from "../../components/JobCompletionModal";
+import {
+  JobCompletionModal,
+  JobCompletionData,
+} from "../../components/JobCompletionModal";
 
 // Countdown Timer Component
 const CountdownTimer = ({
@@ -265,8 +268,16 @@ export default function JobDetailsPage() {
 
     try {
       setLoading(true);
-      console.log("[JobDetails] Loading job with ID:", id);
-      const jobData = await fetchJobDetails(id);
+      console.log("[JobDetails] Raw URL param id:", id);
+      console.log("[JobDetails] ID type:", typeof id);
+      console.log("[JobDetails] ID length:", id.length);
+      console.log("[JobDetails] ID characters:", Array.from(id).join(", "));
+
+      // Clean the ID - remove any extra characters
+      const cleanId = Array.isArray(id) ? id[0] : id;
+      console.log("[JobDetails] Loading job with cleaned ID:", cleanId);
+
+      const jobData = await fetchJobDetails(cleanId);
       console.log(
         "[JobDetails] Received job data:",
         JSON.stringify(jobData, null, 2)
@@ -322,16 +333,42 @@ export default function JobDetailsPage() {
 
   // Handle job completion
   const handleCompleteJob = async (completionData: JobCompletionData) => {
+    console.log(job, "Job");
     if (!job) return;
 
     try {
-      console.log("[JobDetails] Completing job:", job.id, completionData);
-      const result = await completeJob(job.id, completionData);
+      console.log("[JobDetails] Full job object:", JSON.stringify(job, null, 2));
+      console.log(job, "Job Data...");
+
+      // Always prioritize job.id (MongoDB ObjectId) over job_id (human-readable)
+      const cleanId = Array.isArray(id) ? id[0] : id;
+      const jobId = job.id || (job as any)._id || cleanId;
+      const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(jobId);
+
+      console.log("[JobDetails] ID Analysis:", {
+        'job.id (MongoDB ObjectId)': job.id,
+        'job.job_id (human-readable)': job.job_id,
+        'job._id': (job as any)._id,
+        urlParamId: id,
+        cleanId: cleanId,
+        finalJobId: jobId,
+        jobIdLength: jobId?.length,
+        isValidObjectId: isValidObjectId
+      });
+
+      if (!isValidObjectId) {
+        console.error("[JobDetails] ERROR: Using invalid ObjectId format:", jobId);
+        Alert.alert("Error", "Invalid job ID format. Please try again or contact support.");
+        return;
+      }
+
+      console.log("[JobDetails] Completing job with data:", completionData);
+      const result = await completeJob(jobId, completionData);
       console.log("[JobDetails] Job completed successfully:", result);
-      
+
       // Update local job state
-      setJob(prev => prev ? { ...prev, status: "Completed" } : prev);
-      
+      setJob((prev) => (prev ? { ...prev, status: "Completed" } : prev));
+
       Alert.alert(
         "Success",
         "Job completed successfully!" +
@@ -341,7 +378,7 @@ export default function JobDetailsPage() {
             : ""),
         [{ text: "OK" }]
       );
-      
+
       // Refresh job data
       await loadJobDetails();
     } catch (error: any) {
@@ -354,18 +391,18 @@ export default function JobDetailsPage() {
   // Check if job can be completed
   const canCompleteJob = () => {
     if (!job) return false;
-    
+
     // Only scheduled or in progress jobs can be completed
     if (job.status !== "Scheduled" && job.status !== "In Progress") {
       return false;
     }
-    
+
     // Check if job is due (due date is today or past)
     const today = new Date();
     const dueDate = new Date(job.dueDate);
     today.setHours(0, 0, 0, 0);
     dueDate.setHours(0, 0, 0, 0);
-    
+
     return dueDate <= today;
   };
 
@@ -421,8 +458,8 @@ export default function JobDetailsPage() {
 
   return (
     <>
-      <Stack.Screen 
-        options={{ 
+      <Stack.Screen
+        options={{
           title: `Job ${job.job_id}`,
           headerBackTitle: "Jobs",
           headerStyle: {
@@ -433,14 +470,21 @@ export default function JobDetailsPage() {
             fontWeight: "bold",
             color: theme.text,
           },
-        }} 
+        }}
       />
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         {/* Job Header Info */}
-        <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+        <View
+          style={[
+            styles.header,
+            { backgroundColor: theme.surface, borderBottomColor: theme.border },
+          ]}
+        >
           <View style={styles.headerContent}>
             <View style={styles.jobIdContainer}>
-              <Text style={[styles.jobId, { color: theme.primary }]}>{job.job_id}</Text>
+              <Text style={[styles.jobId, { color: theme.primary }]}>
+                {job.job_id}
+              </Text>
               <View
                 style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
               >
@@ -458,7 +502,10 @@ export default function JobDetailsPage() {
                 )}
                 {job.status === "Completed" ? (
                   <View
-                    style={[styles.completedBadge, { backgroundColor: "#10B981" }]}
+                    style={[
+                      styles.completedBadge,
+                      { backgroundColor: "#10B981" },
+                    ]}
                   >
                     <MaterialCommunityIcons
                       name="check"
@@ -845,7 +892,9 @@ export default function JobDetailsPage() {
                         },
                       ]}
                       onPress={() => {
-                        const phone = job.property?.propertyManager?.phone || job.property?.agency?.phone;
+                        const phone =
+                          job.property?.propertyManager?.phone ||
+                          job.property?.agency?.phone;
                         phone && handleCall(phone);
                       }}
                     >
@@ -875,7 +924,9 @@ export default function JobDetailsPage() {
                         },
                       ]}
                       onPress={() => {
-                        const email = job.property?.propertyManager?.email || job.property?.agency?.email;
+                        const email =
+                          job.property?.propertyManager?.email ||
+                          job.property?.agency?.email;
                         email && handleEmail(email);
                       }}
                     >
@@ -1011,47 +1062,84 @@ export default function JobDetailsPage() {
               </TouchableOpacity>
             )}
 
-            {(job.status === "Scheduled" || job.status === "In Progress") && canCompleteJob() && (
-              <TouchableOpacity
-                style={[styles.completeButton, { backgroundColor: theme.success }]}
-                onPress={() => setShowCompletionModal(true)}
-              >
-                <MaterialCommunityIcons
-                  name="check-circle"
-                  size={24}
-                  color="white"
-                />
-                <Text style={styles.completeButtonText}>Complete Job</Text>
-              </TouchableOpacity>
-            )}
+            {(job.status === "Scheduled" || job.status === "In Progress") &&
+              canCompleteJob() && (
+                <TouchableOpacity
+                  style={[
+                    styles.completeButton,
+                    { backgroundColor: theme.success },
+                  ]}
+                  onPress={() => setShowCompletionModal(true)}
+                >
+                  <MaterialCommunityIcons
+                    name="check-circle"
+                    size={24}
+                    color="white"
+                  />
+                  <Text style={styles.completeButtonText}>Complete Job</Text>
+                </TouchableOpacity>
+              )}
 
-            {(job.status === "Scheduled" || job.status === "In Progress") && !canCompleteJob() && (
-              <View style={[styles.notDueInfo, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <MaterialCommunityIcons
-                  name="information"
-                  size={20}
-                  color={theme.info}
-                />
-                <Text style={[styles.notDueText, { color: theme.textSecondary }]}>
-                  Job can be completed on or after the due date
-                </Text>
-              </View>
-            )}
+            {(job.status === "Scheduled" || job.status === "In Progress") &&
+              !canCompleteJob() && (
+                <View
+                  style={[
+                    styles.notDueInfo,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="information"
+                    size={20}
+                    color={theme.info}
+                  />
+                  <Text
+                    style={[styles.notDueText, { color: theme.textSecondary }]}
+                  >
+                    Job can be completed on or after the due date
+                  </Text>
+                </View>
+              )}
           </View>
 
           <View style={{ height: 100 }} />
         </ScrollView>
 
         {/* Job Completion Modal */}
-        {job && (
-          <JobCompletionModal
-            visible={showCompletionModal}
-            onClose={() => setShowCompletionModal(false)}
-            onSubmit={handleCompleteJob}
-            jobId={job.job_id}
-            jobType={job.jobType}
-          />
-        )}
+        {job && (() => {
+          // Always prioritize job.id (MongoDB ObjectId) over job_id (human-readable)
+          const finalJobId = job.id || (job as any)._id || (Array.isArray(id) ? id[0] : id);
+          const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(finalJobId);
+
+          console.log("[JobDetails] Rendering modal with job object:", {
+            jobKeys: Object.keys(job),
+            'job.id (MongoDB ObjectId)': job.id,
+            'job.job_id (human-readable)': job.job_id,
+            'job._id': (job as any)._id,
+            urlId: id,
+            finalJobId: finalJobId,
+            isValidObjectId: isValidObjectId,
+            jobType: job.jobType
+          });
+
+          if (!isValidObjectId) {
+            console.warn("[JobDetails] WARNING: finalJobId is not a valid MongoDB ObjectId format:", finalJobId);
+          }
+
+          return (
+            <JobCompletionModal
+              visible={showCompletionModal}
+              onClose={() => setShowCompletionModal(false)}
+              onSubmit={handleCompleteJob}
+              jobId={finalJobId}
+              jobType={job.jobType}
+              job={{
+                status: job.status,
+                dueDate: job.dueDate
+              }}
+            />
+          );
+        })()}
       </View>
     </>
   );

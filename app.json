@@ -33,7 +33,9 @@
       "edgeToEdgeEnabled": true,
       "permissions": [
         "INTERNET",
-        "INTERNET"
+        "CAMERA",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_EXTERNAL_STORAGE"
       ],
       "package": "com.rentalease.technician"
     },
@@ -42,7 +44,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow RentalEase to access your photos to attach inspection images.",
+          "cameraPermission": "Allow RentalEase to access your camera to take inspection photos."
+        }
+      ]
     ],
     "scheme": "rentalease",
     "extra": {

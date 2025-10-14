@@ -87,14 +87,32 @@ export default function ActiveJobsPage() {
     if (!selectedJobForCompletion) return;
 
     try {
-      console.log("[MyJobs] Completing job:", selectedJobForCompletion.id, completionData);
-      const result = await completeJob(selectedJobForCompletion.id, completionData);
+      // Always use the MongoDB ObjectId, not the human-readable job_id
+      const jobId = selectedJobForCompletion.id || (selectedJobForCompletion as any)._id;
+      const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(jobId);
+
+      console.log("[MyJobs] Completing job with ID analysis:", {
+        'job.id (MongoDB ObjectId)': selectedJobForCompletion.id,
+        'job.job_id (human-readable)': selectedJobForCompletion.job_id,
+        'job._id': (selectedJobForCompletion as any)._id,
+        finalJobId: jobId,
+        isValidObjectId: isValidObjectId,
+        completionData: completionData
+      });
+
+      if (!isValidObjectId) {
+        console.error("[MyJobs] ERROR: Invalid MongoDB ObjectId format:", jobId);
+        Alert.alert("Error", "Invalid job ID format. Please try again or contact support.");
+        return;
+      }
+
+      const result = await completeJob(jobId, completionData);
       console.log("[MyJobs] Job completed successfully:", result);
       
-      // Update local jobs state
-      setJobs(prevJobs => 
-        prevJobs.map(job => 
-          job.id === selectedJobForCompletion.id 
+      // Update local jobs state using the same ID logic
+      setJobs(prevJobs =>
+        prevJobs.map(job =>
+          job.id === jobId
             ? { ...job, status: "Completed" }
             : job
         )
@@ -512,18 +530,41 @@ export default function ActiveJobsPage() {
       )}
 
       {/* Job Completion Modal */}
-      {selectedJobForCompletion && (
-        <JobCompletionModal
-          visible={showCompletionModal}
-          onClose={() => {
-            setShowCompletionModal(false);
-            setSelectedJobForCompletion(null);
-          }}
-          onSubmit={handleCompleteJob}
-          jobId={selectedJobForCompletion.job_id}
-          jobType={selectedJobForCompletion.jobType}
-        />
-      )}
+      {selectedJobForCompletion && (() => {
+        // Always use the MongoDB ObjectId (selectedJobForCompletion.id), not the human-readable job_id
+        const jobId = selectedJobForCompletion.id || (selectedJobForCompletion as any)._id;
+        const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(jobId);
+
+        console.log("[MyJobs] Modal rendering with job:", {
+          'job.id (MongoDB ObjectId)': selectedJobForCompletion.id,
+          'job.job_id (human-readable)': selectedJobForCompletion.job_id,
+          'job._id': (selectedJobForCompletion as any)._id,
+          finalJobId: jobId,
+          isValidObjectId: isValidObjectId,
+          jobType: selectedJobForCompletion.jobType
+        });
+
+        if (!isValidObjectId) {
+          console.error("[MyJobs] ERROR: Invalid MongoDB ObjectId format:", jobId);
+        }
+
+        return (
+          <JobCompletionModal
+            visible={showCompletionModal}
+            onClose={() => {
+              setShowCompletionModal(false);
+              setSelectedJobForCompletion(null);
+            }}
+            onSubmit={handleCompleteJob}
+            jobId={jobId}
+            jobType={selectedJobForCompletion.jobType}
+            job={{
+              status: selectedJobForCompletion.status,
+              dueDate: selectedJobForCompletion.dueDate
+            }}
+          />
+        );
+      })()}
     </View>
   );
 }

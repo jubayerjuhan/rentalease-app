@@ -13,13 +13,8 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
-import InspectionForm, {
-  InspectionFormValues,
-} from "./InspectionForm";
-import type {
-  InspectionTemplate,
-  InspectionMediaUpload,
-} from "@services/jobs";
+import InspectionForm, { InspectionFormValues } from "./InspectionForm";
+import type { InspectionTemplate, InspectionMediaUpload } from "@services/jobs";
 import {
   fetchInspectionTemplates,
   submitInspectionReport,
@@ -55,6 +50,10 @@ interface JobCompletionModalProps {
   onSubmit: (data: JobCompletionData) => Promise<void>;
   jobId: string;
   jobType: string;
+  job?: {
+    status: string;
+    dueDate: string;
+  };
 }
 
 const steps = [
@@ -73,7 +72,9 @@ const defaultLineItem = (): InvoiceLineItem => ({
   amount: 0,
 });
 
-const initializeFormValues = (template: InspectionTemplate): InspectionFormValues => {
+const initializeFormValues = (
+  template: InspectionTemplate
+): InspectionFormValues => {
   return template.sections.reduce((acc, section) => {
     acc[section.id] = {};
     return acc;
@@ -86,7 +87,44 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
   onSubmit,
   jobId,
   jobType,
+  job,
 }) => {
+  // Log jobId when modal is opened
+  React.useEffect(() => {
+    if (visible) {
+      const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(jobId || '');
+      console.log("[JobCompletionModal] Modal opened with:", {
+        jobId: jobId,
+        jobIdType: typeof jobId,
+        jobIdLength: jobId?.length,
+        isValidObjectId: isValidObjectId,
+        jobType: jobType
+      });
+
+      if (!isValidObjectId) {
+        console.warn("[JobCompletionModal] WARNING: Received invalid ObjectId format:", jobId);
+      }
+    }
+  }, [visible, jobId, jobType]);
+
+  // Job completion validation function
+  const canCompleteJob = () => {
+    if (!job) return true; // If no job data provided, assume it can be completed (fallback)
+
+    // Only scheduled or in progress jobs can be completed
+    if (job.status !== "Scheduled" && job.status !== "In Progress") {
+      return false;
+    }
+
+    // Check if job is due (due date is today or past)
+    const today = new Date();
+    const dueDate = new Date(job.dueDate);
+    today.setHours(0, 0, 0, 0);
+    dueDate.setHours(0, 0, 0, 0);
+
+    return dueDate <= today;
+  };
+
   const { theme, isDark } = useTheme();
   const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
 
@@ -94,16 +132,25 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [templateError, setTemplateError] = useState<string | null>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState<InspectionTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<InspectionTemplate | null>(null);
   const [formValues, setFormValues] = useState<InspectionFormValues>({});
-  const [mediaByField, setMediaByField] = useState<Record<string, InspectionMediaUpload[]>>({});
+  const [mediaByField, setMediaByField] = useState<
+    Record<string, InspectionMediaUpload[]>
+  >({});
   const [notes, setNotes] = useState("");
-  const [inspectionReportId, setInspectionReportId] = useState<string | null>(null);
-  const [inspectionReportUrl, setInspectionReportUrl] = useState<string | undefined>(undefined);
+  const [inspectionReportId, setInspectionReportId] = useState<string | null>(
+    null
+  );
+  const [inspectionReportUrl, setInspectionReportUrl] = useState<
+    string | undefined
+  >(undefined);
 
   const [hasInvoice, setHasInvoice] = useState(false);
   const [invoiceDescription, setInvoiceDescription] = useState("");
-  const [lineItems, setLineItems] = useState<InvoiceLineItem[]>([defaultLineItem()]);
+  const [lineItems, setLineItems] = useState<InvoiceLineItem[]>([
+    defaultLineItem(),
+  ]);
   const [taxPercentage, setTaxPercentage] = useState(10);
   const [invoiceNotes, setInvoiceNotes] = useState("");
 
@@ -141,12 +188,9 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       setTemplateError(null);
       const fetched = await fetchInspectionTemplates();
       setTemplates(fetched);
-      const preferred =
-        fetched.find((tpl) => tpl.jobType === jobType) || fetched[0] || null;
-      if (preferred) {
-        setSelectedTemplate(preferred);
-        setFormValues(initializeFormValues(preferred));
-      }
+      // Don't auto-select any template - let technician choose manually
+      setSelectedTemplate(null);
+      setFormValues({});
     } catch (error: any) {
       console.error("Failed to load templates", error);
       setTemplateError(error?.message || "Unable to load inspection templates");
@@ -169,7 +213,10 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
 
   const handleTemplateContinue = () => {
     if (!selectedTemplate) {
-      Alert.alert("Select Template", "Please choose an inspection template to continue.");
+      Alert.alert(
+        "Select Template",
+        "Please choose an inspection template to continue."
+      );
       return;
     }
     if (Object.keys(formValues).length === 0) {
@@ -183,7 +230,11 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       Alert.alert("Template missing", "Select a template before proceeding.");
       return;
     }
-    const missing = validateRequiredFields(selectedTemplate, formValues, mediaByField);
+    const missing = validateRequiredFields(
+      selectedTemplate,
+      formValues,
+      mediaByField
+    );
     if (missing.length) {
       Alert.alert(
         "Incomplete form",
@@ -201,7 +252,11 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       Alert.alert("Template missing", "Select a template before submitting.");
       return;
     }
-    const missing = validateRequiredFields(selectedTemplate, formValues, mediaByField);
+    const missing = validateRequiredFields(
+      selectedTemplate,
+      formValues,
+      mediaByField
+    );
     if (missing.length) {
       Alert.alert(
         "Incomplete form",
@@ -233,10 +288,38 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
 
     try {
       setIsSubmitting(true);
+
+      // Validate if job can be completed BEFORE creating inspection report
+      if (!canCompleteJob()) {
+        const today = new Date();
+        const dueDate = job ? new Date(job.dueDate) : today;
+        const isNotDue = dueDate > today;
+
+        if (isNotDue) {
+          Alert.alert(
+            "Job Not Due",
+            `This job can only be completed on or after ${dueDate.toLocaleDateString()}. Please wait until the due date to complete this job.`
+          );
+        } else if (job && job.status !== "Scheduled" && job.status !== "In Progress") {
+          Alert.alert(
+            "Invalid Job Status",
+            `Only scheduled or in-progress jobs can be completed. Current status: ${job.status}`
+          );
+        } else {
+          Alert.alert("Cannot Complete Job", "This job cannot be completed at this time.");
+        }
+        return;
+      }
+
       let reportId = inspectionReportId;
       let reportUrl = inspectionReportUrl;
 
       if (!reportId) {
+        console.log("[JobCompletionModal] Job validation passed. Submitting inspection report with jobId:", jobId);
+        console.log("[JobCompletionModal] JobId type:", typeof jobId);
+        console.log("[JobCompletionModal] JobId length:", jobId?.length);
+        console.log("[JobCompletionModal] JobId is valid ObjectId format?:", /^[0-9a-fA-F]{24}$/.test(jobId));
+
         const submission = await submitInspectionReport(jobId, {
           template: selectedTemplate,
           formValues,
@@ -257,7 +340,9 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       if (hasInvoice) {
         const { subtotal, taxAmount, total } = calculateTotals();
         const validLineItems = lineItems
-          .filter((item) => item.name.trim() && item.quantity > 0 && item.rate > 0)
+          .filter(
+            (item) => item.name.trim() && item.quantity > 0 && item.rate > 0
+          )
           .map((item) => ({
             ...item,
             name: item.name.trim(),
@@ -284,8 +369,12 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       );
       onClose();
     } catch (error: any) {
+      console.log(error, "Error...RentalEase");
       console.error("Job completion failed", error);
-      Alert.alert("Unable to complete job", error?.message || "Please try again.");
+      Alert.alert(
+        "Unable to complete job",
+        error?.message || "Please try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -367,7 +456,9 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
   };
 
   const removeLineItem = (id: string) => {
-    setLineItems((prev) => (prev.length === 1 ? prev : prev.filter((item) => item.id !== id)));
+    setLineItems((prev) =>
+      prev.length === 1 ? prev : prev.filter((item) => item.id !== id)
+    );
   };
 
   const renderStepContent = () => {
@@ -375,7 +466,9 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       return (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={[styles.loaderText, { color: theme.textSecondary }]}>Loading templates…</Text>
+          <Text style={[styles.loaderText, { color: theme.textSecondary }]}>
+            Loading templates…
+          </Text>
         </View>
       );
     }
@@ -383,7 +476,9 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
     if (templateError) {
       return (
         <View style={styles.errorContainer}>
-          <Text style={[styles.errorText, { color: theme.error }]}>{templateError}</Text>
+          <Text style={[styles.errorText, { color: theme.error }]}>
+            {templateError}
+          </Text>
           <TouchableOpacity
             style={[styles.retryButton, { backgroundColor: theme.primary }]}
             onPress={loadTemplates}
@@ -400,15 +495,20 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       case "template":
         return (
           <ScrollView style={styles.stepScroll}>
-            <Text style={[styles.stepHeading, { color: theme.text }]}>Choose inspection template</Text>
-            <Text style={[styles.stepSubheading, { color: theme.textSecondary }]}>Select the form that matches the work carried out on this job.</Text>
+            <Text style={[styles.stepHeading, { color: theme.text }]}>
+              Choose inspection template
+            </Text>
+            <Text
+              style={[styles.stepSubheading, { color: theme.textSecondary }]}
+            >
+              Select the form that matches the work carried out on this job.
+            </Text>
             <View style={styles.templateGrid}>
               {templates.map((template) => {
                 const isSelected =
                   selectedTemplate?.jobType === template.jobType &&
                   selectedTemplate?.version === template.version;
-                const highlight =
-                  isSelected || template.jobType === jobType;
+                const highlight = isSelected;
                 return (
                   <TouchableOpacity
                     key={`${template.jobType}-${template.version}`}
@@ -416,7 +516,9 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
                       styles.templateCard,
                       {
                         borderColor: highlight ? theme.primary : theme.border,
-                        backgroundColor: highlight ? theme.primary + "10" : theme.card,
+                        backgroundColor: highlight
+                          ? theme.primary + "10"
+                          : theme.card,
                       },
                     ]}
                     onPress={() => handleTemplateSelect(template)}
@@ -427,21 +529,32 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
                         size={24}
                         color={highlight ? theme.primary : theme.textSecondary}
                       />
-                      <Text style={[styles.templateJobType, { color: theme.text }]}>
+                      <Text
+                        style={[styles.templateJobType, { color: theme.text }]}
+                      >
                         {template.jobType}
                       </Text>
                     </View>
                     <Text style={[styles.templateTitle, { color: theme.text }]}>
                       {template.title}
                     </Text>
-                    <Text style={[styles.templateMeta, { color: theme.textSecondary }]}>
+                    <Text
+                      style={[
+                        styles.templateMeta,
+                        { color: theme.textSecondary },
+                      ]}
+                    >
                       {`Version ${template.version}`}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
               {templates.length === 0 && (
-                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No templates configured yet.</Text>
+                <Text
+                  style={[styles.emptyText, { color: theme.textSecondary }]}
+                >
+                  No templates configured yet.
+                </Text>
               )}
             </View>
           </ScrollView>
@@ -450,14 +563,23 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
         if (!selectedTemplate) {
           return (
             <View style={styles.errorContainer}>
-              <Text style={[styles.errorText, { color: theme.error }]}>Select a template to continue.</Text>
+              <Text style={[styles.errorText, { color: theme.error }]}>
+                Select a template to continue.
+              </Text>
             </View>
           );
         }
         return (
           <ScrollView style={styles.stepScroll}>
-            <View style={[styles.infoCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <Text style={[styles.infoTitle, { color: theme.text }]}>{selectedTemplate.title}</Text>
+            <View
+              style={[
+                styles.infoCard,
+                { backgroundColor: theme.card, borderColor: theme.border },
+              ]}
+            >
+              <Text style={[styles.infoTitle, { color: theme.text }]}>
+                {selectedTemplate.title}
+              </Text>
               <Text style={[styles.infoSub, { color: theme.textSecondary }]}>
                 {`Job Type: ${selectedTemplate.jobType} · Version ${selectedTemplate.version}`}
               </Text>
@@ -484,14 +606,21 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
         return (
           <ScrollView style={styles.stepScroll}>
             {inspectionReportId && (
-              <View style={[styles.infoCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View
+                style={[
+                  styles.infoCard,
+                  { backgroundColor: theme.card, borderColor: theme.border },
+                ]}
+              >
                 <View style={styles.infoRow}>
                   <MaterialCommunityIcons
                     name="file-check"
                     size={20}
                     color={theme.success || "#10B981"}
                   />
-                  <Text style={[styles.infoTitle, { color: theme.text }]}>Inspection saved</Text>
+                  <Text style={[styles.infoTitle, { color: theme.text }]}>
+                    Inspection saved
+                  </Text>
                 </View>
                 <Text style={[styles.infoSub, { color: theme.textSecondary }]}>
                   {inspectionReportUrl
@@ -501,10 +630,24 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
               </View>
             )}
 
-            <View style={[styles.toggleCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View
+              style={[
+                styles.toggleCard,
+                { backgroundColor: theme.card, borderColor: theme.border },
+              ]}
+            >
               <View>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>Attach Invoice</Text>
-                <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>Generate an invoice for additional charges or materials.</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                  Attach Invoice
+                </Text>
+                <Text
+                  style={[
+                    styles.sectionDescription,
+                    { color: theme.textSecondary },
+                  ]}
+                >
+                  Generate an invoice for additional charges or materials.
+                </Text>
               </View>
               <Switch
                 value={hasInvoice}
@@ -515,13 +658,25 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
             </View>
 
             {hasInvoice && (
-              <View style={[styles.invoiceContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>Invoice Details</Text>
+              <View
+                style={[
+                  styles.invoiceContainer,
+                  { backgroundColor: theme.card, borderColor: theme.border },
+                ]}
+              >
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                  Invoice Details
+                </Text>
 
                 <View style={styles.inputGroup}>
-                  <Text style={[styles.inputLabel, { color: theme.text }]}>Description *</Text>
+                  <Text style={[styles.inputLabel, { color: theme.text }]}>
+                    Description *
+                  </Text>
                   <TextInput
-                    style={[styles.textInput, { borderColor: theme.border, color: theme.text }]}
+                    style={[
+                      styles.textInput,
+                      { borderColor: theme.border, color: theme.text },
+                    ]}
                     value={invoiceDescription}
                     onChangeText={setInvoiceDescription}
                     placeholder="Enter invoice description"
@@ -530,60 +685,114 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
                   />
                 </View>
 
-                <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 12 }]}>Line Items</Text>
+                <Text
+                  style={[
+                    styles.sectionTitle,
+                    { color: theme.text, marginTop: 12 },
+                  ]}
+                >
+                  Line Items
+                </Text>
                 {lineItems.map((item, index) => (
-                  <View key={item.id} style={[styles.lineItemCard, { borderColor: theme.border }]}> 
+                  <View
+                    key={item.id}
+                    style={[styles.lineItemCard, { borderColor: theme.border }]}
+                  >
                     <View style={styles.lineItemHeader}>
-                      <Text style={[styles.lineItemTitle, { color: theme.text }]}>
+                      <Text
+                        style={[styles.lineItemTitle, { color: theme.text }]}
+                      >
                         {`Item ${index + 1}`}
                       </Text>
                       {lineItems.length > 1 && (
-                        <TouchableOpacity onPress={() => removeLineItem(item.id)}>
-                          <MaterialCommunityIcons name="delete-outline" size={20} color={theme.error} />
+                        <TouchableOpacity
+                          onPress={() => removeLineItem(item.id)}
+                        >
+                          <MaterialCommunityIcons
+                            name="delete-outline"
+                            size={20}
+                            color={theme.error}
+                          />
                         </TouchableOpacity>
                       )}
                     </View>
                     <View style={styles.inputGroup}>
-                      <Text style={[styles.inputLabel, { color: theme.text }]}>Name *</Text>
+                      <Text style={[styles.inputLabel, { color: theme.text }]}>
+                        Name *
+                      </Text>
                       <TextInput
-                        style={[styles.textInput, { borderColor: theme.border, color: theme.text }]}
+                        style={[
+                          styles.textInput,
+                          { borderColor: theme.border, color: theme.text },
+                        ]}
                         value={item.name}
-                        onChangeText={(text) => updateLineItem(item.id, "name", text)}
+                        onChangeText={(text) =>
+                          updateLineItem(item.id, "name", text)
+                        }
                         placeholder="Line item description"
                         placeholderTextColor={theme.placeholder}
                       />
                     </View>
                     <View style={styles.lineItemRow}>
                       <View style={styles.lineItemInputSmall}>
-                        <Text style={[styles.inputLabel, { color: theme.text }]}>Qty *</Text>
+                        <Text
+                          style={[styles.inputLabel, { color: theme.text }]}
+                        >
+                          Qty *
+                        </Text>
                         <TextInput
-                          style={[styles.textInput, { borderColor: theme.border, color: theme.text }]}
+                          style={[
+                            styles.textInput,
+                            { borderColor: theme.border, color: theme.text },
+                          ]}
                           value={String(item.quantity)}
                           keyboardType="numeric"
                           onChangeText={(text) =>
-                            updateLineItem(item.id, "quantity", parseInt(text, 10) || 0)
+                            updateLineItem(
+                              item.id,
+                              "quantity",
+                              parseInt(text, 10) || 0
+                            )
                           }
                           placeholder="1"
                           placeholderTextColor={theme.placeholder}
                         />
                       </View>
                       <View style={styles.lineItemInputSmall}>
-                        <Text style={[styles.inputLabel, { color: theme.text }]}>Rate *</Text>
+                        <Text
+                          style={[styles.inputLabel, { color: theme.text }]}
+                        >
+                          Rate *
+                        </Text>
                         <TextInput
-                          style={[styles.textInput, { borderColor: theme.border, color: theme.text }]}
+                          style={[
+                            styles.textInput,
+                            { borderColor: theme.border, color: theme.text },
+                          ]}
                           value={String(item.rate)}
                           keyboardType="decimal-pad"
                           onChangeText={(text) =>
-                            updateLineItem(item.id, "rate", parseFloat(text) || 0)
+                            updateLineItem(
+                              item.id,
+                              "rate",
+                              parseFloat(text) || 0
+                            )
                           }
                           placeholder="0.00"
                           placeholderTextColor={theme.placeholder}
                         />
                       </View>
                       <View style={styles.lineItemInputSmall}>
-                        <Text style={[styles.inputLabel, { color: theme.text }]}>Amount</Text>
+                        <Text
+                          style={[styles.inputLabel, { color: theme.text }]}
+                        >
+                          Amount
+                        </Text>
                         <TextInput
-                          style={[styles.textInput, { borderColor: theme.border, color: theme.text }]}
+                          style={[
+                            styles.textInput,
+                            { borderColor: theme.border, color: theme.text },
+                          ]}
                           value={`$${item.amount.toFixed(2)}`}
                           editable={false}
                         />
@@ -592,40 +801,95 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
                   </View>
                 ))}
 
-                <TouchableOpacity style={styles.addItemButton} onPress={addLineItem}>
-                  <MaterialCommunityIcons name="plus-circle" size={18} color={theme.primary} />
-                  <Text style={[styles.addItemText, { color: theme.primary }]}>Add line item</Text>
+                <TouchableOpacity
+                  style={styles.addItemButton}
+                  onPress={addLineItem}
+                >
+                  <MaterialCommunityIcons
+                    name="plus-circle"
+                    size={18}
+                    color={theme.primary}
+                  />
+                  <Text style={[styles.addItemText, { color: theme.primary }]}>
+                    Add line item
+                  </Text>
                 </TouchableOpacity>
 
                 <View style={styles.inputGroup}>
-                  <Text style={[styles.inputLabel, { color: theme.text }]}>Tax %</Text>
+                  <Text style={[styles.inputLabel, { color: theme.text }]}>
+                    Tax %
+                  </Text>
                   <TextInput
-                    style={[styles.textInput, { borderColor: theme.border, color: theme.text }]}
+                    style={[
+                      styles.textInput,
+                      { borderColor: theme.border, color: theme.text },
+                    ]}
                     value={String(taxPercentage)}
                     keyboardType="numeric"
-                    onChangeText={(text) => setTaxPercentage(parseFloat(text) || 0)}
+                    onChangeText={(text) =>
+                      setTaxPercentage(parseFloat(text) || 0)
+                    }
                     placeholder="10"
                     placeholderTextColor={theme.placeholder}
                   />
                 </View>
 
                 <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Subtotal</Text>
-                  <Text style={[styles.summaryValue, { color: theme.text }]}>${subtotal.toFixed(2)}</Text>
+                  <Text
+                    style={[
+                      styles.summaryLabel,
+                      { color: theme.textSecondary },
+                    ]}
+                  >
+                    Subtotal
+                  </Text>
+                  <Text style={[styles.summaryValue, { color: theme.text }]}>
+                    ${subtotal.toFixed(2)}
+                  </Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Tax</Text>
-                  <Text style={[styles.summaryValue, { color: theme.text }]}>${taxAmount.toFixed(2)}</Text>
+                  <Text
+                    style={[
+                      styles.summaryLabel,
+                      { color: theme.textSecondary },
+                    ]}
+                  >
+                    Tax
+                  </Text>
+                  <Text style={[styles.summaryValue, { color: theme.text }]}>
+                    ${taxAmount.toFixed(2)}
+                  </Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, styles.summaryTotal, { color: theme.text }]}>Total</Text>
-                  <Text style={[styles.summaryValue, styles.summaryTotal, { color: theme.text }]}>${total.toFixed(2)}</Text>
+                  <Text
+                    style={[
+                      styles.summaryLabel,
+                      styles.summaryTotal,
+                      { color: theme.text },
+                    ]}
+                  >
+                    Total
+                  </Text>
+                  <Text
+                    style={[
+                      styles.summaryValue,
+                      styles.summaryTotal,
+                      { color: theme.text },
+                    ]}
+                  >
+                    ${total.toFixed(2)}
+                  </Text>
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={[styles.inputLabel, { color: theme.text }]}>Notes</Text>
+                  <Text style={[styles.inputLabel, { color: theme.text }]}>
+                    Notes
+                  </Text>
                   <TextInput
-                    style={[styles.textInput, { borderColor: theme.border, color: theme.text }]}
+                    style={[
+                      styles.textInput,
+                      { borderColor: theme.border, color: theme.text },
+                    ]}
                     value={invoiceNotes}
                     onChangeText={setInvoiceNotes}
                     placeholder="Optional notes"
@@ -659,8 +923,16 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
 
     return (
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.footerSecondary} onPress={onClose} disabled={isSubmitting}>
-          <Text style={[styles.footerSecondaryText, { color: theme.textSecondary }]}>Cancel</Text>
+        <TouchableOpacity
+          style={styles.footerSecondary}
+          onPress={onClose}
+          disabled={isSubmitting}
+        >
+          <Text
+            style={[styles.footerSecondaryText, { color: theme.textSecondary }]}
+          >
+            Cancel
+          </Text>
         </TouchableOpacity>
 
         {currentStepIndex > 0 && (
@@ -669,12 +941,22 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
             onPress={() => goToStep(currentStepIndex - 1)}
             disabled={isSubmitting}
           >
-            <Text style={[styles.footerSecondaryText, { color: theme.textSecondary }]}>Back</Text>
+            <Text
+              style={[
+                styles.footerSecondaryText,
+                { color: theme.textSecondary },
+              ]}
+            >
+              Back
+            </Text>
           </TouchableOpacity>
         )}
 
         <TouchableOpacity
-          style={[styles.footerPrimary, { backgroundColor: theme.primary, opacity: isSubmitting ? 0.7 : 1 }]}
+          style={[
+            styles.footerPrimary,
+            { backgroundColor: theme.primary, opacity: isSubmitting ? 0.7 : 1 },
+          ]}
           onPress={primaryAction}
           disabled={isSubmitting}
         >
@@ -697,7 +979,9 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
     >
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Complete Job</Text>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>
+            Complete Job
+          </Text>
           <TouchableOpacity onPress={onClose}>
             <MaterialCommunityIcons name="close" size={24} color={theme.text} />
           </TouchableOpacity>
@@ -713,7 +997,8 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
                   style={[
                     styles.stepCircle,
                     {
-                      backgroundColor: isCompleted || isActive ? theme.primary : theme.border,
+                      backgroundColor:
+                        isCompleted || isActive ? theme.primary : theme.border,
                     },
                   ]}
                 >
