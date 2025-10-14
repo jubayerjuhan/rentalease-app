@@ -146,7 +146,20 @@ export type InspectionFieldType =
   | "photo-multi"
   | "rating"
   | "signature"
-  | "checkbox-group";
+  | "yes-no"
+  | "yes-no-na"
+  | "pass-fail"
+  | "checkbox-group"
+  | "table";
+
+export type InspectionTableColumn = {
+  id: string;
+  label: string;
+  type: "text" | "textarea" | "number" | "select" | "date";
+  required?: boolean;
+  placeholder?: string;
+  options?: InspectionFieldOption[];
+};
 
 export type InspectionFieldOption = {
   value: string;
@@ -165,6 +178,7 @@ export type InspectionField = {
   max?: number;
   step?: number;
   metadata?: Record<string, any>;
+  columns?: InspectionTableColumn[];
 };
 
 export type InspectionSection = {

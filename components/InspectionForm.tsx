@@ -18,6 +18,7 @@ import type {
   InspectionTemplate,
   InspectionField,
   InspectionMediaUpload,
+  InspectionTableColumn,
 } from "@services/jobs";
 
 export type InspectionFormValues = Record<string, Record<string, any>>;
@@ -344,6 +345,201 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
     onChange(sectionId, field.id, nextValue);
   };
 
+  const renderTableField = (sectionId: string, field: InspectionField) => {
+    const columns: InspectionTableColumn[] = field.columns || field.metadata?.columns || [];
+    const sectionValues = values[sectionId] || {};
+    const rows: Array<Record<string, any>> = Array.isArray(sectionValues[field.id])
+      ? sectionValues[field.id]
+      : [];
+
+    const handleRowChange = (
+      rowIndex: number,
+      columnId: string,
+      value: any
+    ) => {
+      const updatedRows = rows.map((row, index) =>
+        index === rowIndex ? { ...row, [columnId]: value } : row
+      );
+      onChange(sectionId, field.id, updatedRows);
+    };
+
+    const handleAddRow = () => {
+      const newRow: Record<string, any> = {};
+      columns.forEach((column) => {
+        newRow[column.id] = "";
+      });
+      onChange(sectionId, field.id, [...rows, newRow]);
+    };
+
+    const handleRemoveRow = (rowIndex: number) => {
+      const updatedRows = rows.filter((_, index) => index !== rowIndex);
+      onChange(sectionId, field.id, updatedRows);
+    };
+
+    const renderColumnInput = (
+      column: InspectionTableColumn,
+      rowIndex: number,
+      rowValue: Record<string, any>
+    ) => {
+      const value = rowValue[column.id] ?? "";
+      const commonInputStyle = [
+        styles.tableInput,
+        {
+          borderColor: theme.border,
+          color: theme.text,
+        },
+      ];
+      const baseTextInputProps = {
+        editable,
+        placeholderTextColor: theme.placeholder,
+      } as const;
+
+      switch (column.type) {
+        case "number":
+          return (
+            <TextInput
+              {...baseTextInputProps}
+              style={commonInputStyle}
+              keyboardType="numeric"
+              placeholder={column.placeholder || "0"}
+              value={value !== undefined && value !== null ? String(value) : ""}
+              onChangeText={(text) => {
+                const numeric = text === "" ? "" : text.replace(/[^0-9.-]/g, "");
+                handleRowChange(rowIndex, column.id, numeric);
+              }}
+            />
+          );
+        case "select":
+          return (
+            <View style={styles.tableSelectRow}>
+              {(column.options || []).map((option) => {
+                const isSelected = value === option.value;
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.optionChip,
+                      styles.tableOptionChip,
+                      {
+                        borderColor: isSelected ? theme.primary : theme.border,
+                        backgroundColor: isSelected ? theme.primary : theme.card,
+                      },
+                    ]}
+                    onPress={() =>
+                      editable && handleRowChange(rowIndex, column.id, option.value)
+                    }
+                    disabled={!editable}
+                  >
+                    <Text
+                      style={{
+                        color: isSelected ? "#fff" : theme.text,
+                        fontWeight: isSelected ? "600" : "500",
+                      }}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          );
+        case "date":
+          return (
+            <DatePickerField
+              value={value || null}
+              onChange={(date) => handleRowChange(rowIndex, column.id, date)}
+              placeholder={column.placeholder || "Select date"}
+              editable={editable}
+              theme={theme}
+            />
+          );
+        case "textarea":
+          return (
+            <TextInput
+              {...baseTextInputProps}
+              style={[...commonInputStyle, styles.tableTextarea]}
+              placeholder={column.placeholder || "Enter details"}
+              value={value ?? ""}
+              multiline
+              numberOfLines={3}
+              onChangeText={(text) => handleRowChange(rowIndex, column.id, text)}
+            />
+          );
+        case "text":
+        default:
+          return (
+            <TextInput
+              {...baseTextInputProps}
+              style={commonInputStyle}
+              placeholder={column.placeholder || "Enter value"}
+              value={value ?? ""}
+              onChangeText={(text) => handleRowChange(rowIndex, column.id, text)}
+            />
+          );
+      }
+    };
+
+    return (
+      <View style={styles.tableContainer}>
+        {rows.length === 0 ? (
+          <Text style={[styles.tableEmpty, { color: theme.textSecondary }]}>
+            {editable
+              ? "No records yet. Add the first entry to begin recording information."
+              : "No records provided."}
+          </Text>
+        ) : null}
+
+        {rows.map((row, rowIndex) => (
+          <View key={`row-${rowIndex}`} style={[styles.tableRow, { borderColor: theme.border }]}> 
+            <View style={styles.tableRowHeader}>
+              <Text style={[styles.tableRowTitle, { color: theme.text }]}>
+                {`${field.label} #${rowIndex + 1}`}
+              </Text>
+              {editable && (
+                <TouchableOpacity
+                  onPress={() => handleRemoveRow(rowIndex)}
+                  style={styles.tableRemoveButton}
+                >
+                  <MaterialCommunityIcons
+                    name="delete"
+                    size={18}
+                    color={theme.error}
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {columns.map((column) => (
+              <View key={column.id} style={styles.tableColumn}>
+                <Text style={[styles.tableColumnLabel, { color: theme.textSecondary }]}>
+                  {column.label}
+                  {column.required ? " *" : ""}
+                </Text>
+                {renderColumnInput(column, rowIndex, row)}
+              </View>
+            ))}
+          </View>
+        ))}
+
+        {editable && (
+          <TouchableOpacity
+            style={[styles.tableAddButton, { borderColor: theme.primary }]}
+            onPress={handleAddRow}
+          >
+            <MaterialCommunityIcons
+              name="plus"
+              size={20}
+              color={theme.primary}
+            />
+            <Text style={[styles.tableAddButtonText, { color: theme.primary }]}>
+              {`Add ${field.label}`}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
   const renderField = (sectionId: string, field: InspectionField) => {
     const sectionValues = values[sectionId] || {};
     const fieldValue = sectionValues[field.id];
@@ -629,6 +825,8 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
             )}
           </View>
         );
+      case "table":
+        return renderTableField(sectionId, field);
       case "photo":
       case "photo-multi": {
         const maxPhotos =
@@ -866,6 +1064,72 @@ const styles = StyleSheet.create({
   },
   signatureButtonText: {
     fontSize: 14,
+    fontWeight: "600",
+  },
+  tableContainer: {
+    gap: 16,
+  },
+  tableEmpty: {
+    fontSize: 13,
+    fontStyle: "italic",
+  },
+  tableRow: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 4,
+    gap: 12,
+  },
+  tableRowHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  tableRowTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  tableRemoveButton: {
+    padding: 4,
+  },
+  tableColumn: {
+    gap: 6,
+  },
+  tableColumnLabel: {
+    fontSize: 12,
+    textTransform: "uppercase",
+  },
+  tableInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  tableTextarea: {
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
+  tableSelectRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  tableOptionChip: {
+    paddingVertical: 6,
+  },
+  tableAddButton: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  tableAddButtonText: {
+    fontSize: 13,
     fontWeight: "600",
   },
   datePickerButton: {

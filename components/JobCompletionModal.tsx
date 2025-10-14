@@ -1045,6 +1045,26 @@ const validateRequiredFields = (
         }
         return;
       }
+      if (field.type === "table") {
+        const rows = Array.isArray(value) ? value : [];
+        if (!rows.length) {
+          missing.push(field.label);
+          return;
+        }
+        const requiredColumns = field.columns?.filter((column) => column.required);
+        if (requiredColumns && requiredColumns.length) {
+          const hasIncompleteRow = rows.some((row: Record<string, any>) =>
+            requiredColumns.some(
+              (column) =>
+                row[column.id] === undefined || row[column.id] === null || row[column.id] === ""
+            )
+          );
+          if (hasIncompleteRow) {
+            missing.push(`${field.label} (complete required columns)`);
+            return;
+          }
+        }
+      }
       if (value === undefined || value === null || value === "") {
         missing.push(field.label);
         return;
