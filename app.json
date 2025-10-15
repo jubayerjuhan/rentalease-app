@@ -8,7 +8,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "packageManager": "pnpm",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -52,7 +51,8 @@
           "photosPermission": "Allow RentalEase to access your photos to attach inspection images.",
           "cameraPermission": "Allow RentalEase to access your camera to take inspection photos."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "scheme": "rentalease",
     "extra": {

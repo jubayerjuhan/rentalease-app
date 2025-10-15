@@ -195,18 +195,6 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
       return;
     }
 
-    const maxPhotos =
-      typeof field.metadata?.max === "number" ? field.metadata.max : undefined;
-    if (maxPhotos && currentCount >= maxPhotos) {
-      Alert.alert(
-        "Limit reached",
-        `You can attach up to ${maxPhotos} photo${
-          maxPhotos > 1 ? "s" : ""
-        } for ${field.label}.`
-      );
-      return;
-    }
-
     console.log("[InspectionForm] Showing action sheet for photo selection");
 
     // Show action sheet to choose camera or photo library
@@ -829,9 +817,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
         return renderTableField(sectionId, field);
       case "photo":
       case "photo-multi": {
-        const maxPhotos =
-          typeof field.metadata?.max === "number" ? field.metadata.max : undefined;
-        const canAdd = maxPhotos ? mediaForField.length < maxPhotos : true;
+        const canAdd = true;
         return (
           <View>
             <View style={styles.mediaRow}>

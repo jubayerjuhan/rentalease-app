@@ -80,7 +80,10 @@ const initializeFormValues = (
     section.fields.forEach((field) => {
       if (field.type === "table") {
         const columns = field.columns || field.metadata?.columns || [];
-        if (field.required && columns.length) {
+        // Check if field has default value
+        if ((field as any).defaultValue && Array.isArray((field as any).defaultValue)) {
+          sectionValues[field.id] = (field as any).defaultValue;
+        } else if (field.required && columns.length) {
           const emptyRow = columns.reduce((row, column) => {
             row[column.id] = "";
             return row;
@@ -94,7 +97,8 @@ const initializeFormValues = (
       } else if (field.type === "boolean") {
         sectionValues[field.id] = false;
       } else {
-        sectionValues[field.id] = "";
+        // Use defaultValue if available, otherwise use empty string
+        sectionValues[field.id] = (field as any).defaultValue || "";
       }
     });
     acc[section.id] = sectionValues;
@@ -207,11 +211,15 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
     try {
       setLoadingTemplates(true);
       setTemplateError(null);
-      const fetched = await fetchInspectionTemplates();
-      setTemplates(fetched);
-      // Don't auto-select any template - let technician choose manually
+      // Clear any stale template data before loading fresh results
+      setTemplates([]);
       setSelectedTemplate(null);
       setFormValues({});
+      const fetched = await fetchInspectionTemplates();
+      const versionTwoTemplates = fetched.filter(
+        (template) => template.version === 2
+      );
+      setTemplates(versionTwoTemplates);
     } catch (error: any) {
       console.error("Failed to load templates", error);
       setTemplateError(error?.message || "Unable to load inspection templates");
