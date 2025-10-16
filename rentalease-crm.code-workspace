@@ -1,0 +1,154 @@
+{
+  "folders": [
+    {
+      "name": "🏠 RentalEase CRM (Root)",
+      "path": "."
+    },
+    {
+      "name": "🎨 Frontend (React/TypeScript)",
+      "path": "./RentalEase-CRM"
+    },
+    {
+      "name": "⚙️ Backend (Node.js/Express)",
+      "path": "./RentalEase-CRM-Server"
+    }
+  ],
+  "settings": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit"
+    },
+    "typescript.preferences.importModuleSpecifier": "relative",
+    "typescript.suggest.autoImports": true,
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/build": true,
+      "**/.git": true,
+      "**/.DS_Store": true,
+      "**/Thumbs.db": true,
+      "**/*.log": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/build": true,
+      "**/.git": true,
+      "**/coverage": true,
+      "**/*.log": true
+    },
+    "eslint.workingDirectories": [
+      "./RentalEase-CRM"
+    ],
+    "terminal.integrated.defaultProfile.osx": "bash",
+    "workbench.editor.enablePreview": false,
+    "explorer.fileNesting.enabled": true,
+    "explorer.fileNesting.patterns": {
+      "*.ts": "${capture}.js",
+      "*.js": "${capture}.js.map, ${capture}.min.js, ${capture}.d.ts",
+      "*.jsx": "${capture}.js",
+      "*.tsx": "${capture}.ts",
+      "tsconfig.json": "tsconfig.*.json",
+      "package.json": "package-lock.json, yarn.lock, pnpm-lock.yaml",
+      "*.scss": "${capture}.css, ${capture}.css.map"
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "esbenp.prettier-vscode",
+      "dbaeumer.vscode-eslint",
+      "ms-vscode.vscode-typescript-next",
+      "syler.sass-indented",
+      "formulahendry.auto-rename-tag",
+      "christian-kohler.path-intellisense",
+      "usernamehw.errorlens",
+      "streetsidesoftware.code-spell-checker"
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "🚀 Start Full Stack Development",
+        "dependsOrder": "parallel",
+        "dependsOn": [
+          "Start Backend Dev Server",
+          "Start Frontend Dev Server"
+        ],
+        "group": "build",
+        "presentation": {
+          "echo": true,
+          "reveal": "always",
+          "focus": false,
+          "panel": "shared",
+          "showReuseMessage": true,
+          "clear": false
+        }
+      },
+      {
+        "label": "Start Backend Dev Server",
+        "type": "shell",
+        "command": "pnpm",
+        "args": ["dev"],
+        "options": {
+          "cwd": "${workspaceFolder}/RentalEase-CRM-Server"
+        },
+        "group": "build",
+        "presentation": {
+          "echo": true,
+          "reveal": "always",
+          "focus": false,
+          "panel": "shared"
+        },
+        "isBackground": true,
+        "problemMatcher": {
+          "pattern": [
+            {
+              "regexp": ".",
+              "file": 1,
+              "location": 2,
+              "message": 3
+            }
+          ],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "^.*Server.*starting.*$",
+            "endsPattern": "^.*Server.*running.*$"
+          }
+        }
+      },
+      {
+        "label": "Start Frontend Dev Server",
+        "type": "shell",
+        "command": "pnpm",
+        "args": ["dev"],
+        "options": {
+          "cwd": "${workspaceFolder}/RentalEase-CRM"
+        },
+        "group": "build",
+        "presentation": {
+          "echo": true,
+          "reveal": "always",
+          "focus": false,
+          "panel": "shared"
+        },
+        "isBackground": true,
+        "problemMatcher": {
+          "pattern": [
+            {
+              "regexp": ".",
+              "file": 1,
+              "location": 2,
+              "message": 3
+            }
+          ],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "^.*VITE.*$",
+            "endsPattern": "^.*Local:.*$"
+          }
+        }
+      }
+    ]
+  }
+}

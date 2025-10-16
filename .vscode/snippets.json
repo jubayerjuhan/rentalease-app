@@ -1,0 +1,182 @@
+{
+  "React Functional Component": {
+    "prefix": "rfc",
+    "body": [
+      "import React from 'react';",
+      "import styles from './${TM_FILENAME_BASE}.module.scss';",
+      "",
+      "interface ${TM_FILENAME_BASE}Props {",
+      "  $1",
+      "}",
+      "",
+      "const ${TM_FILENAME_BASE}: React.FC<${TM_FILENAME_BASE}Props> = ({ $2 }) => {",
+      "  return (",
+      "    <div className={styles.container}>",
+      "      $3",
+      "    </div>",
+      "  );",
+      "};",
+      "",
+      "export default ${TM_FILENAME_BASE};"
+    ],
+    "description": "React Functional Component with TypeScript and SCSS module"
+  },
+  "React Hook": {
+    "prefix": "rhook",
+    "body": [
+      "import { useState, useEffect } from 'react';",
+      "",
+      "export const use${1:HookName} = ($2) => {",
+      "  const [${3:state}, set${3/(.*)/${1:/capitalize}/}] = useState($4);",
+      "",
+      "  useEffect(() => {",
+      "    $5",
+      "  }, [$6]);",
+      "",
+      "  return {",
+      "    ${3:state},",
+      "    set${3/(.*)/${1:/capitalize}/},",
+      "    $7",
+      "  };",
+      "};"
+    ],
+    "description": "Custom React Hook"
+  },
+  "Express Route Handler": {
+    "prefix": "express-route",
+    "body": [
+      "export const ${1:routeName} = async (req, res) => {",
+      "  try {",
+      "    const { $2 } = req.${3:body};",
+      "    ",
+      "    $4",
+      "    ",
+      "    res.status(200).json({",
+      "      success: true,",
+      "      message: '$5',",
+      "      data: $6",
+      "    });",
+      "  } catch (error) {",
+      "    console.error('Error in ${1:routeName}:', error);",
+      "    res.status(500).json({",
+      "      success: false,",
+      "      message: 'Internal server error'",
+      "    });",
+      "  }",
+      "};"
+    ],
+    "description": "Express.js route handler with error handling"
+  },
+  "Mongoose Schema": {
+    "prefix": "mongoose-schema",
+    "body": [
+      "import mongoose from 'mongoose';",
+      "",
+      "const ${1:schemaName}Schema = new mongoose.Schema({",
+      "  ${2:fieldName}: {",
+      "    type: ${3:String},",
+      "    required: [true, '${2:fieldName} is required'],",
+      "    $4",
+      "  },",
+      "  $5",
+      "}, {",
+      "  timestamps: true,",
+      "});",
+      "",
+      "const ${1:schemaName} = mongoose.model('${1:schemaName}', ${1:schemaName}Schema);",
+      "",
+      "export default ${1:schemaName};"
+    ],
+    "description": "Mongoose Schema with basic structure"
+  },
+  "Redux Slice": {
+    "prefix": "redux-slice",
+    "body": [
+      "import { createSlice, PayloadAction } from '@reduxjs/toolkit';",
+      "",
+      "interface ${1:SliceName}State {",
+      "  ${2:property}: ${3:type};",
+      "  loading: boolean;",
+      "  error: string | null;",
+      "}",
+      "",
+      "const initialState: ${1:SliceName}State = {",
+      "  ${2:property}: ${4:initialValue},",
+      "  loading: false,",
+      "  error: null,",
+      "};",
+      "",
+      "const ${1/(.*)/${1:/downcase}/}Slice = createSlice({",
+      "  name: '${1/(.*)/${1:/downcase}/}',",
+      "  initialState,",
+      "  reducers: {",
+      "    set${2/(.*)/${1:/capitalize}/}: (state, action: PayloadAction<${3:type}>) => {",
+      "      state.${2:property} = action.payload;",
+      "    },",
+      "    setLoading: (state, action: PayloadAction<boolean>) => {",
+      "      state.loading = action.payload;",
+      "    },",
+      "    setError: (state, action: PayloadAction<string | null>) => {",
+      "      state.error = action.payload;",
+      "    },",
+      "    reset${1:SliceName}: (state) => {",
+      "      return initialState;",
+      "    },",
+      "  },",
+      "});",
+      "",
+      "export const { set${2/(.*)/${1:/capitalize}/}, setLoading, setError, reset${1:SliceName} } = ${1/(.*)/${1:/downcase}/}Slice.actions;",
+      "export default ${1/(.*)/${1:/downcase}/}Slice.reducer;"
+    ],
+    "description": "Redux Toolkit slice with TypeScript"
+  },
+  "API Service Function": {
+    "prefix": "api-service",
+    "body": [
+      "import axios from 'axios';",
+      "",
+      "const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1';",
+      "",
+      "export const ${1:serviceName}Service = {",
+      "  ${2:methodName}: async (${3:params}) => {",
+      "    try {",
+      "      const response = await axios.${4:get}(`\\${API_BASE_URL}/${5:endpoint}`, ${6:config});",
+      "      return response.data;",
+      "    } catch (error) {",
+      "      console.error('Error in ${2:methodName}:', error);",
+      "      throw error;",
+      "    }",
+      "  },",
+      "  $7",
+      "};"
+    ],
+    "description": "API service function with error handling"
+  },
+  "TypeScript Interface": {
+    "prefix": "interface",
+    "body": [
+      "export interface ${1:InterfaceName} {",
+      "  ${2:property}: ${3:type};",
+      "  $4",
+      "}"
+    ],
+    "description": "TypeScript Interface"
+  },
+  "SCSS Component Module": {
+    "prefix": "scss-module",
+    "body": [
+      ".container {",
+      "  $1",
+      "",
+      "  &__${2:element} {",
+      "    $3",
+      "  }",
+      "",
+      "  &--${4:modifier} {",
+      "    $5",
+      "  }",
+      "}"
+    ],
+    "description": "SCSS Module with BEM methodology"
+  }
+}

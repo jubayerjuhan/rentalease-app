@@ -1,0 +1,56 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Frontend (Vite)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/RentalEase-CRM",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
+      "port": 5173,
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Launch Backend (Node.js)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/RentalEase-CRM-Server/index.js",
+      "cwd": "${workspaceFolder}/RentalEase-CRM-Server",
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "runtimeArgs": ["--experimental-modules"],
+      "skipFiles": ["<node_internals>/**"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Debug Backend with Nodemon",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/RentalEase-CRM-Server",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "skipFiles": ["<node_internals>/**"],
+      "console": "integratedTerminal",
+      "restart": true
+    },
+    {
+      "name": "Attach to Chrome",
+      "type": "chrome",
+      "request": "attach",
+      "port": 9222,
+      "webRoot": "${workspaceFolder}/RentalEase-CRM/src"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Launch Full Stack",
+      "configurations": ["Launch Backend (Node.js)", "Launch Frontend (Vite)"],
+      "stopAll": true
+    }
+  ]
+}
