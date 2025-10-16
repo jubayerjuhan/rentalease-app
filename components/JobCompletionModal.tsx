@@ -14,9 +14,14 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
 import InspectionForm, { InspectionFormValues } from "./InspectionForm";
-import type { InspectionTemplate, InspectionMediaUpload } from "@services/jobs";
+import type {
+  InspectionTemplate,
+  InspectionMediaUpload,
+  InspectionField,
+} from "@services/jobs";
 import {
   fetchInspectionTemplates,
+  fetchInspectionTemplate,
   submitInspectionReport,
 } from "@services/jobs";
 
@@ -56,13 +61,35 @@ interface JobCompletionModalProps {
   };
 }
 
-const steps = [
-  { key: "template", label: "Select Template" },
-  { key: "form", label: "Inspection Form" },
-  { key: "invoice", label: "Invoice & Submit" },
-] as const;
+const getFieldLabel = (field: InspectionField): string => {
+  const fromQuestion = field.question?.trim();
+  if (fromQuestion) {
+    return fromQuestion;
+  }
+  const fromLabel = field.label?.trim();
+  if (fromLabel) {
+    return fromLabel;
+  }
+  return field.id;
+};
 
-type StepKey = (typeof steps)[number]["key"];
+const getStepsForJobType = (jobType: string) => {
+  if (jobType === "MinimumSafetyStandard") {
+    return [
+      { key: "template", label: "Select Template" },
+      { key: "rooms", label: "Room Configuration" },
+      { key: "form", label: "Inspection Form" },
+      { key: "invoice", label: "Invoice & Submit" },
+    ] as const;
+  }
+  return [
+    { key: "template", label: "Select Template" },
+    { key: "form", label: "Inspection Form" },
+    { key: "invoice", label: "Invoice & Submit" },
+  ] as const;
+};
+
+type StepKey = "template" | "rooms" | "form" | "invoice";
 
 const defaultLineItem = (): InvoiceLineItem => ({
   id: `${Date.now()}`,
@@ -81,7 +108,10 @@ const initializeFormValues = (
       if (field.type === "table") {
         const columns = field.columns || field.metadata?.columns || [];
         // Check if field has default value
-        if ((field as any).defaultValue && Array.isArray((field as any).defaultValue)) {
+        if (
+          (field as any).defaultValue &&
+          Array.isArray((field as any).defaultValue)
+        ) {
           sectionValues[field.id] = (field as any).defaultValue;
         } else if (field.required && columns.length) {
           const emptyRow = columns.reduce((row, column) => {
@@ -117,17 +147,20 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
   // Log jobId when modal is opened
   React.useEffect(() => {
     if (visible) {
-      const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(jobId || '');
+      const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(jobId || "");
       console.log("[JobCompletionModal] Modal opened with:", {
         jobId: jobId,
         jobIdType: typeof jobId,
         jobIdLength: jobId?.length,
         isValidObjectId: isValidObjectId,
-        jobType: jobType
+        jobType: jobType,
       });
 
       if (!isValidObjectId) {
-        console.warn("[JobCompletionModal] WARNING: Received invalid ObjectId format:", jobId);
+        console.warn(
+          "[JobCompletionModal] WARNING: Received invalid ObjectId format:",
+          jobId
+        );
       }
     }
   }, [visible, jobId, jobType]);
@@ -153,12 +186,19 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
   const { theme, isDark } = useTheme();
   const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
 
+  const steps = useMemo(() => getStepsForJobType(jobType), [jobType]);
+
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [templateError, setTemplateError] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] =
     useState<InspectionTemplate | null>(null);
+
+  // Room configuration state for MinimumSafetyStandard
+  const [bedroomCount, setBedroomCount] = useState(1);
+  const [bathroomCount, setBathroomCount] = useState(1);
+  const [loadingDynamicTemplate, setLoadingDynamicTemplate] = useState(false);
   const [formValues, setFormValues] = useState<InspectionFormValues>({});
   const [mediaByField, setMediaByField] = useState<
     Record<string, InspectionMediaUpload[]>
@@ -197,6 +237,9 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
     setInvoiceNotes("");
     setTemplateError(null);
     setLoadingTemplates(false);
+    setBedroomCount(1);
+    setBathroomCount(1);
+    setLoadingDynamicTemplate(false);
   };
 
   useEffect(() => {
@@ -248,10 +291,66 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       );
       return;
     }
-    if (Object.keys(formValues).length === 0) {
-      setFormValues(initializeFormValues(selectedTemplate));
+
+    // For MinimumSafetyStandard, go to room configuration step
+    if (selectedTemplate.jobType === "MinimumSafetyStandard") {
+      goToStep(1); // Go to room configuration step
+    } else {
+      // For other templates, initialize form and go directly to form step
+      if (Object.keys(formValues).length === 0) {
+        setFormValues(initializeFormValues(selectedTemplate));
+      }
+      const formStepIndex = steps.findIndex((step) => step.key === "form");
+      goToStep(formStepIndex);
     }
-    goToStep(1);
+  };
+
+  const handleRoomConfigContinue = async () => {
+    if (
+      !selectedTemplate ||
+      selectedTemplate.jobType !== "MinimumSafetyStandard"
+    ) {
+      Alert.alert("Error", "Invalid template for room configuration.");
+      return;
+    }
+
+    if (bedroomCount < 1 || bathroomCount < 1) {
+      Alert.alert(
+        "Invalid Configuration",
+        "Please enter at least 1 bedroom and 1 bathroom."
+      );
+      return;
+    }
+
+    try {
+      setLoadingDynamicTemplate(true);
+
+      // Fetch the dynamic template with room counts
+      const dynamicTemplate = await fetchInspectionTemplate(
+        "MinimumSafetyStandard",
+        {
+          bedroomCount,
+          bathroomCount,
+        }
+      );
+
+      // Update the selected template with the dynamic version
+      setSelectedTemplate(dynamicTemplate);
+      setFormValues(initializeFormValues(dynamicTemplate));
+
+      // Go to form step
+      const nextStepIndex = steps.findIndex((step) => step.key === "form");
+      goToStep(nextStepIndex);
+    } catch (error: any) {
+      console.error("Failed to load dynamic template:", error);
+      Alert.alert(
+        "Template Error",
+        error?.message ||
+          "Failed to load the inspection template. Please try again."
+      );
+    } finally {
+      setLoadingDynamicTemplate(false);
+    }
   };
 
   const handleFormContinue = () => {
@@ -273,7 +372,8 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       );
       return;
     }
-    goToStep(2);
+    const nextStepIndex = steps.findIndex((step) => step.key === "invoice");
+    goToStep(nextStepIndex);
   };
 
   const handleSubmit = async () => {
@@ -329,13 +429,20 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
             "Job Not Due",
             `This job can only be completed on or after ${dueDate.toLocaleDateString()}. Please wait until the due date to complete this job.`
           );
-        } else if (job && job.status !== "Scheduled" && job.status !== "In Progress") {
+        } else if (
+          job &&
+          job.status !== "Scheduled" &&
+          job.status !== "In Progress"
+        ) {
           Alert.alert(
             "Invalid Job Status",
             `Only scheduled or in-progress jobs can be completed. Current status: ${job.status}`
           );
         } else {
-          Alert.alert("Cannot Complete Job", "This job cannot be completed at this time.");
+          Alert.alert(
+            "Cannot Complete Job",
+            "This job cannot be completed at this time."
+          );
         }
         return;
       }
@@ -344,10 +451,16 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       let reportUrl = inspectionReportUrl;
 
       if (!reportId) {
-        console.log("[JobCompletionModal] Job validation passed. Submitting inspection report with jobId:", jobId);
+        console.log(
+          "[JobCompletionModal] Job validation passed. Submitting inspection report with jobId:",
+          jobId
+        );
         console.log("[JobCompletionModal] JobId type:", typeof jobId);
         console.log("[JobCompletionModal] JobId length:", jobId?.length);
-        console.log("[JobCompletionModal] JobId is valid ObjectId format?:", /^[0-9a-fA-F]{24}$/.test(jobId));
+        console.log(
+          "[JobCompletionModal] JobId is valid ObjectId format?:",
+          /^[0-9a-fA-F]{24}$/.test(jobId)
+        );
 
         const submission = await submitInspectionReport(jobId, {
           template: selectedTemplate,
@@ -585,6 +698,156 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
                   No templates configured yet.
                 </Text>
               )}
+            </View>
+          </ScrollView>
+        );
+      case "rooms":
+        if (loadingDynamicTemplate) {
+          return (
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator size="large" color={theme.primary} />
+              <Text style={[styles.loaderText, { color: theme.textSecondary }]}>
+                Loading inspection template…
+              </Text>
+            </View>
+          );
+        }
+        return (
+          <ScrollView style={styles.stepScroll}>
+            <Text style={[styles.stepHeading, { color: theme.text }]}>
+              Property Configuration
+            </Text>
+            <Text
+              style={[styles.stepSubheading, { color: theme.textSecondary }]}
+            >
+              Configure the number of bedrooms and bathrooms for this property
+              inspection.
+            </Text>
+            <View
+              style={[
+                styles.roomConfigCard,
+                { backgroundColor: theme.card, borderColor: theme.border },
+              ]}
+            >
+              <View style={styles.roomConfigRow}>
+                <View style={styles.roomConfigItem}>
+                  <Text style={[styles.roomConfigLabel, { color: theme.text }]}>
+                    Number of Bedrooms
+                  </Text>
+                  <Text
+                    style={[
+                      styles.roomConfigHint,
+                      { color: theme.textSecondary },
+                    ]}
+                  >
+                    Enter the total number of bedrooms
+                  </Text>
+                  <View style={styles.roomCounterContainer}>
+                    <TouchableOpacity
+                      style={[
+                        styles.counterButton,
+                        { borderColor: theme.border },
+                      ]}
+                      onPress={() =>
+                        setBedroomCount(Math.max(1, bedroomCount - 1))
+                      }
+                      disabled={bedroomCount <= 1}
+                    >
+                      <MaterialCommunityIcons
+                        name="minus"
+                        size={20}
+                        color={
+                          bedroomCount <= 1
+                            ? theme.disabled
+                            : theme.textSecondary
+                        }
+                      />
+                    </TouchableOpacity>
+                    <Text style={[styles.counterValue, { color: theme.text }]}>
+                      {bedroomCount}
+                    </Text>
+                    <TouchableOpacity
+                      style={[
+                        styles.counterButton,
+                        { borderColor: theme.border },
+                      ]}
+                      onPress={() =>
+                        setBedroomCount(Math.min(20, bedroomCount + 1))
+                      }
+                      disabled={bedroomCount >= 20}
+                    >
+                      <MaterialCommunityIcons
+                        name="plus"
+                        size={20}
+                        color={
+                          bedroomCount >= 20
+                            ? theme.disabled
+                            : theme.textSecondary
+                        }
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.roomConfigItem}>
+                  <Text style={[styles.roomConfigLabel, { color: theme.text }]}>
+                    Number of Bathrooms
+                  </Text>
+                  <Text
+                    style={[
+                      styles.roomConfigHint,
+                      { color: theme.textSecondary },
+                    ]}
+                  >
+                    Enter the total number of bathrooms
+                  </Text>
+                  <View style={styles.roomCounterContainer}>
+                    <TouchableOpacity
+                      style={[
+                        styles.counterButton,
+                        { borderColor: theme.border },
+                      ]}
+                      onPress={() =>
+                        setBathroomCount(Math.max(1, bathroomCount - 1))
+                      }
+                      disabled={bathroomCount <= 1}
+                    >
+                      <MaterialCommunityIcons
+                        name="minus"
+                        size={20}
+                        color={
+                          bathroomCount <= 1
+                            ? theme.disabled
+                            : theme.textSecondary
+                        }
+                      />
+                    </TouchableOpacity>
+                    <Text style={[styles.counterValue, { color: theme.text }]}>
+                      {bathroomCount}
+                    </Text>
+                    <TouchableOpacity
+                      style={[
+                        styles.counterButton,
+                        { borderColor: theme.border },
+                      ]}
+                      onPress={() =>
+                        setBathroomCount(Math.min(10, bathroomCount + 1))
+                      }
+                      disabled={bathroomCount >= 10}
+                    >
+                      <MaterialCommunityIcons
+                        name="plus"
+                        size={20}
+                        color={
+                          bathroomCount >= 10
+                            ? theme.disabled
+                            : theme.textSecondary
+                        }
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
             </View>
           </ScrollView>
         );
@@ -939,6 +1202,8 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
     const primaryLabel =
       stepKey === "template"
         ? "Continue"
+        : stepKey === "rooms"
+        ? "Generate Template"
         : stepKey === "form"
         ? "Continue"
         : "Complete Job";
@@ -946,6 +1211,8 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
     const primaryAction =
       stepKey === "template"
         ? handleTemplateContinue
+        : stepKey === "rooms"
+        ? handleRoomConfigContinue
         : stepKey === "form"
         ? handleFormContinue
         : handleSubmit;
@@ -984,12 +1251,15 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
         <TouchableOpacity
           style={[
             styles.footerPrimary,
-            { backgroundColor: theme.primary, opacity: isSubmitting ? 0.7 : 1 },
+            {
+              backgroundColor: theme.primary,
+              opacity: isSubmitting || loadingDynamicTemplate ? 0.7 : 1,
+            },
           ]}
           onPress={primaryAction}
-          disabled={isSubmitting}
+          disabled={isSubmitting || loadingDynamicTemplate}
         >
-          {isSubmitting ? (
+          {isSubmitting || loadingDynamicTemplate ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <Text style={styles.footerPrimaryText}>{primaryLabel}</Text>
@@ -1066,40 +1336,45 @@ const validateRequiredFields = (
     const sectionValues = values[section.id] || {};
     section.fields.forEach((field) => {
       if (!field.required) return;
+      const label = getFieldLabel(field);
       const value = sectionValues[field.id];
       if (field.type === "photo" || field.type === "photo-multi") {
         const attachments = media[field.id] || [];
         if (!attachments.length) {
-          missing.push(field.label);
+          missing.push(label);
         }
         return;
       }
       if (field.type === "table") {
         const rows = Array.isArray(value) ? value : [];
         if (!rows.length) {
-          missing.push(field.label);
+          missing.push(label);
           return;
         }
-        const requiredColumns = field.columns?.filter((column) => column.required);
+        const requiredColumns = field.columns?.filter(
+          (column) => column.required
+        );
         if (requiredColumns && requiredColumns.length) {
           const hasIncompleteRow = rows.some((row: Record<string, any>) =>
             requiredColumns.some(
               (column) =>
-                row[column.id] === undefined || row[column.id] === null || row[column.id] === ""
+                row[column.id] === undefined ||
+                row[column.id] === null ||
+                row[column.id] === ""
             )
           );
           if (hasIncompleteRow) {
-            missing.push(`${field.label} (complete required columns)`);
+            missing.push(`${label} (complete required columns)`);
             return;
           }
         }
       }
       if (value === undefined || value === null || value === "") {
-        missing.push(field.label);
+        missing.push(label);
         return;
       }
       if (Array.isArray(value) && value.length === 0) {
-        missing.push(field.label);
+        missing.push(label);
       }
     });
   });
@@ -1360,6 +1635,49 @@ const createStyles = (theme: any, isDark: boolean) =>
       color: "#fff",
       fontSize: 16,
       fontWeight: "700",
+    },
+    // Room configuration styles
+    roomConfigCard: {
+      borderWidth: 1,
+      borderRadius: 12,
+      padding: 20,
+      marginTop: 16,
+    },
+    roomConfigRow: {
+      gap: 24,
+    },
+    roomConfigItem: {
+      alignItems: "center",
+    },
+    roomConfigLabel: {
+      fontSize: 16,
+      fontWeight: "600",
+      marginBottom: 4,
+      textAlign: "center",
+    },
+    roomConfigHint: {
+      fontSize: 13,
+      marginBottom: 16,
+      textAlign: "center",
+    },
+    roomCounterContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 16,
+    },
+    counterButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      borderWidth: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    counterValue: {
+      fontSize: 24,
+      fontWeight: "700",
+      minWidth: 40,
+      textAlign: "center",
     },
   });
 

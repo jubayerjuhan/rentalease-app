@@ -23,6 +23,18 @@ import type {
 
 export type InspectionFormValues = Record<string, Record<string, any>>;
 
+const resolveFieldLabel = (field: InspectionField): string => {
+  const fromQuestion = field.question?.trim();
+  if (fromQuestion) {
+    return fromQuestion;
+  }
+  const fromLabel = field.label?.trim();
+  if (fromLabel) {
+    return fromLabel;
+  }
+  return field.id;
+};
+
 interface DatePickerFieldProps {
   value: string | null | undefined;
   onChange: (date: string) => void;
@@ -481,7 +493,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
           <View key={`row-${rowIndex}`} style={[styles.tableRow, { borderColor: theme.border }]}> 
             <View style={styles.tableRowHeader}>
               <Text style={[styles.tableRowTitle, { color: theme.text }]}>
-                {`${field.label} #${rowIndex + 1}`}
+                {`${resolveFieldLabel(field)} #${rowIndex + 1}`}
               </Text>
               {editable && (
                 <TouchableOpacity
@@ -520,7 +532,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
               color={theme.primary}
             />
             <Text style={[styles.tableAddButtonText, { color: theme.primary }]}>
-              {`Add ${field.label}`}
+              {`Add ${resolveFieldLabel(field)}`}
             </Text>
           </TouchableOpacity>
         )}
@@ -887,7 +899,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
             <View key={field.id} style={styles.fieldBlock}>
               <View style={styles.fieldLabelRow}>
                 <Text style={[styles.fieldLabel, { color: theme.text }]}>
-                  {field.label}
+                  {resolveFieldLabel(field)}
                   {field.required ? " *" : ""}
                 </Text>
               </View>

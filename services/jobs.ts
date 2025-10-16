@@ -169,6 +169,7 @@ export type InspectionFieldOption = {
 export type InspectionField = {
   id: string;
   label: string;
+  question?: string;
   type: InspectionFieldType;
   required?: boolean;
   placeholder?: string;
@@ -257,21 +258,31 @@ export const fetchInspectionTemplates = async (): Promise<
 };
 
 export const fetchInspectionTemplate = async (
-  jobType: string
+  jobType: string,
+  options?: { bedroomCount?: number; bathroomCount?: number }
 ): Promise<InspectionTemplate> => {
   const baseUrl = getBaseUrl();
   const token = await getToken();
 
-  const res = await fetch(
-    `${baseUrl}/api/v1/inspections/templates/${encodeURIComponent(jobType)}`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
+  // Build query parameters for dynamic templates
+  const queryParams = new URLSearchParams();
+  if (options?.bedroomCount) {
+    queryParams.append('bedroomCount', options.bedroomCount.toString());
+  }
+  if (options?.bathroomCount) {
+    queryParams.append('bathroomCount', options.bathroomCount.toString());
+  }
+
+  const url = `${baseUrl}/api/v1/inspections/templates/${encodeURIComponent(jobType)}`;
+  const fullUrl = queryParams.toString() ? `${url}?${queryParams.toString()}` : url;
+
+  const res = await fetch(fullUrl, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
 
   const json = await res.json();
   if (!res.ok) {
@@ -309,8 +320,9 @@ export const submitInspectionReport = async (
     section.fields.forEach((field) => {
       const items = payload.mediaByField[field.id];
       if (items && items.length) {
+        const fieldLabel = field.question || field.label || field.id;
         mediaMeta[field.id] = {
-          label: field.label,
+          label: fieldLabel,
           metadata: {
             sectionId: section.id,
             count: items.length,
