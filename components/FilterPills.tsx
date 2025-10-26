@@ -39,13 +39,14 @@ export function FilterPills({ pills, selectedPill, onPillPress, style }: FilterP
           const isSelected = selectedPill === pill.id;
           const isFirst = index === 0;
           const isLast = index === pills.length - 1;
+          const isOverdue = pill.id === 'Overdue';
 
           return (
             <TouchableOpacity
               key={pill.id}
               style={[
                 styles.pill,
-                isSelected && styles.pillSelected,
+                isSelected && (isOverdue ? styles.pillSelectedOverdue : styles.pillSelected),
                 isFirst && styles.pillFirst,
                 isLast && styles.pillLast,
               ]}
@@ -105,6 +106,14 @@ const createStyles = (theme: any, isDark: boolean) =>
       backgroundColor: theme.primary,
       borderColor: theme.primary,
       shadowColor: theme.primary,
+      shadowOpacity: isDark ? 0 : 0.25,
+      shadowRadius: 4,
+      elevation: isDark ? 0 : 3,
+    },
+    pillSelectedOverdue: {
+      backgroundColor: '#EF4444',
+      borderColor: '#EF4444',
+      shadowColor: '#EF4444',
       shadowOpacity: isDark ? 0 : 0.25,
       shadowRadius: 4,
       elevation: isDark ? 0 : 3,

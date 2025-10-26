@@ -46,11 +46,11 @@ export default function ActiveJobsPage() {
 
         let filteredJobs = data.jobs || [];
 
-        // Client-side filtering for Overdue - use backend's isOverdue flag
+        // Client-side filtering for Overdue - use backend's isOverdue flag OR status
         if (status === "Overdue") {
           filteredJobs = filteredJobs.filter(job => {
-            return job.isOverdue === true &&
-                   (job.status === "Scheduled" || job.status === "In Progress");
+            return (job.isOverdue === true && (job.status === "Scheduled" || job.status === "In Progress")) ||
+                   job.status === "Overdue";
           });
         }
 
@@ -213,8 +213,14 @@ export default function ActiveJobsPage() {
         }
       };
 
-      // Check if job can be completed (due date is today or past)
+      // Check if job can be completed (due date is today or past, or if job is overdue)
       const canCompleteJob = () => {
+        // If job is marked as overdue, it can always be completed regardless of due date
+        if (item.isOverdue === true || item.status === "Overdue") {
+          return true;
+        }
+
+        // For regular jobs, check if due date has passed
         const today = new Date();
         const dueDate = new Date(item.dueDate);
         today.setHours(0, 0, 0, 0);
@@ -232,10 +238,10 @@ export default function ActiveJobsPage() {
             styles.jobCard,
             {
               backgroundColor: theme.card,
-              borderLeftColor: isDue ? theme.error : (item.status === "Completed" ? "#10B981" : theme.primary),
+              borderLeftColor: isDue ? "#EF4444" : (item.status === "Completed" ? "#10B981" : theme.primary),
               borderWidth: isDue ? 2 : 0,
-              borderColor: isDue ? theme.error : "transparent",
-              shadowColor: isDue ? theme.error : "#000",
+              borderColor: isDue ? "#EF4444" : "transparent",
+              shadowColor: isDue ? "#EF4444" : "#000",
               shadowOpacity: isDue ? 0.15 : 0.08,
               elevation: isDue ? 6 : 4,
             },
@@ -270,7 +276,7 @@ export default function ActiveJobsPage() {
               >
                 {isDue && (
                   <View
-                    style={[styles.dueBadge, styles.overdueBadge, { backgroundColor: theme.error }]}
+                    style={[styles.dueBadge, styles.overdueBadge, { backgroundColor: "#EF4444" }]}
                   >
                     <MaterialCommunityIcons
                       name="alert-circle"
@@ -294,9 +300,11 @@ export default function ActiveJobsPage() {
                 </View>
               </View>
             </View>
-            <Text style={[styles.jobTitle, { color: theme.text }]}>
-              {item.title || item.description || "Job Title"}
-            </Text>
+            {!isDue && (
+              <Text style={[styles.jobTitle, { color: theme.text }]}>
+                {item.title || item.description || "Job Title"}
+              </Text>
+            )}
             <View style={styles.jobTypeContainer}>
               <MaterialCommunityIcons
                 name="wrench"
@@ -391,12 +399,12 @@ export default function ActiveJobsPage() {
           )}
 
           <View style={styles.jobActions}>
-            {(item.status === "Scheduled" || item.status === "In Progress") &&
-              canCompleteJob() && (
+            {((item.status === "Scheduled" || item.status === "In Progress") && canCompleteJob()) ||
+              (item.isOverdue === true || item.status === "Overdue") ? (
                 <TouchableOpacity
                   style={[
                     styles.completeButton,
-                    { backgroundColor: isDue ? theme.error : theme.success },
+                    { backgroundColor: isDue ? "#EF4444" : theme.success },
                     isDue && styles.urgentCompleteButton,
                   ]}
                   onPress={() => openCompletionModal(item)}
@@ -410,21 +418,24 @@ export default function ActiveJobsPage() {
                     {isDue ? "Complete Overdue" : "Complete Job"}
                   </Text>
                 </TouchableOpacity>
-              )}
+              ) : null}
 
             <TouchableOpacity
               style={[
                 styles.viewButton,
-                { backgroundColor: theme.surface, borderColor: item.status === "Completed" ? "#10B981" : theme.primary },
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: isDue ? "#EF4444" : (item.status === "Completed" ? "#10B981" : theme.primary)
+                },
               ]}
               onPress={handleJobPress}
             >
               <MaterialCommunityIcons
                 name="eye"
                 size={20}
-                color={item.status === "Completed" ? "#10B981" : theme.primary}
+                color={isDue ? "#EF4444" : (item.status === "Completed" ? "#10B981" : theme.primary)}
               />
-              <Text style={[styles.viewButtonText, { color: item.status === "Completed" ? "#10B981" : theme.primary }]}>
+              <Text style={[styles.viewButtonText, { color: isDue ? "#EF4444" : (item.status === "Completed" ? "#10B981" : theme.primary) }]}>
                 View Details
               </Text>
             </TouchableOpacity>
