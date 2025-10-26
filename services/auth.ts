@@ -126,9 +126,9 @@ export async function technicianResetPassword(
 export async function technicianLogout(): Promise<void> {
   try {
     await deleteToken();
-    console.log('[technicianLogout] Token deleted successfully');
+    console.log("[technicianLogout] Token deleted successfully");
   } catch (error) {
-    console.log('[technicianLogout] Error deleting token:', error);
+    console.log("[technicianLogout] Error deleting token:", error);
     throw error;
   }
 }
