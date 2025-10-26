@@ -115,7 +115,16 @@ const initializeFormValues = (
           sectionValues[field.id] = (field as any).defaultValue;
         } else if (field.required && columns.length) {
           const emptyRow = columns.reduce((row, column) => {
-            row[column.id] = "";
+            // Prefill table rows with test data
+            if (column.type === "select" && column.options?.length) {
+              row[column.id] = column.options[0].value;
+            } else if (column.type === "date") {
+              row[column.id] = new Date().toISOString().split('T')[0];
+            } else if (column.type === "number") {
+              row[column.id] = "1";
+            } else {
+              row[column.id] = `Test ${column.label || column.id}`;
+            }
             return row;
           }, {} as Record<string, any>);
           sectionValues[field.id] = [emptyRow];
@@ -123,12 +132,36 @@ const initializeFormValues = (
           sectionValues[field.id] = [];
         }
       } else if (field.type === "multi-select") {
-        sectionValues[field.id] = [];
+        // Prefill with first option if available
+        if (field.options?.length) {
+          sectionValues[field.id] = [field.options[0].value];
+        } else {
+          sectionValues[field.id] = [];
+        }
       } else if (field.type === "boolean") {
-        sectionValues[field.id] = false;
+        sectionValues[field.id] = true; // Default to true for testing
+      } else if (field.type === "select") {
+        // Prefill with first option
+        if (field.options?.length) {
+          sectionValues[field.id] = field.options[0].value;
+        } else {
+          sectionValues[field.id] = "";
+        }
+      } else if (field.type === "date") {
+        // Prefill with today's date
+        sectionValues[field.id] = new Date().toISOString().split('T')[0];
+      } else if (field.type === "number") {
+        // Prefill with test number
+        sectionValues[field.id] = "123";
+      } else if (field.type === "yes-no" || field.type === "yes-no-na") {
+        // Prefill with "yes"
+        sectionValues[field.id] = "yes";
+      } else if (field.type === "pass-fail") {
+        // Prefill with "pass"
+        sectionValues[field.id] = "pass";
       } else {
-        // Use defaultValue if available, otherwise use empty string
-        sectionValues[field.id] = (field as any).defaultValue || "";
+        // Use defaultValue if available, otherwise use test text
+        sectionValues[field.id] = (field as any).defaultValue || `Test ${field.label || field.id}`;
       }
     });
     acc[section.id] = sectionValues;
@@ -259,10 +292,32 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       setSelectedTemplate(null);
       setFormValues({});
       const fetched = await fetchInspectionTemplates();
-      const versionTwoTemplates = fetched.filter(
-        (template) => template.version === 2
+
+      // Define the 4 specific template titles we want to show
+      const allowedTemplateTitles = [
+        "Electrical & Smoke Safety Inspection",
+        "Gas Safety Inspection",
+        "Smoke Alarm Safety Inspection (Smoke Only)",
+        "Minimum Safety Standard Inspection"
+      ];
+
+      // Filter templates to only show allowed titles
+      const allowedTemplates = fetched.filter(template =>
+        allowedTemplateTitles.includes(template.title)
       );
-      setTemplates(versionTwoTemplates);
+
+      // Get the latest version of each template title (no version filtering needed)
+      const latestTemplates = allowedTemplateTitles
+        .map(title => {
+          const templatesOfType = allowedTemplates.filter(t => t.title === title);
+          if (templatesOfType.length === 0) return null;
+
+          // Sort by version descending and get the highest version
+          return templatesOfType.sort((a, b) => b.version - a.version)[0];
+        })
+        .filter((template): template is InspectionTemplate => template !== null); // Remove null values with type guard
+
+      setTemplates(latestTemplates);
     } catch (error: any) {
       console.error("Failed to load templates", error);
       setTemplateError(error?.message || "Unable to load inspection templates");

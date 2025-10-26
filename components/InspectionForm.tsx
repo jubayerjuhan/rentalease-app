@@ -140,7 +140,7 @@ const DatePickerField: React.FC<DatePickerFieldProps> = ({
       </TouchableOpacity>
 
       {showPicker && Platform.OS === 'ios' && (
-        <View style={styles.iosPickerContainer}>
+        <View style={[styles.iosPickerContainer, { backgroundColor: theme.card }]}>
           <View style={[styles.iosPickerHeader, { borderBottomColor: theme.border }]}>
             <TouchableOpacity onPress={handleIOSCancel} style={styles.iosPickerButton}>
               <Text style={[styles.iosPickerButtonText, { color: theme.textSecondary }]}>Cancel</Text>
@@ -154,7 +154,7 @@ const DatePickerField: React.FC<DatePickerFieldProps> = ({
             mode="date"
             display="spinner"
             onChange={handleDateChange}
-            style={styles.iosDatePicker}
+            style={[styles.iosDatePicker, { backgroundColor: theme.card }]}
           />
         </View>
       )}
@@ -387,6 +387,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
         {
           borderColor: theme.border,
           color: theme.text,
+          backgroundColor: theme.surface || theme.card,
         },
       ];
       const baseTextInputProps = {
@@ -490,7 +491,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
         ) : null}
 
         {rows.map((row, rowIndex) => (
-          <View key={`row-${rowIndex}`} style={[styles.tableRow, { borderColor: theme.border }]}> 
+          <View key={`row-${rowIndex}`} style={[styles.tableRow, { borderColor: theme.border }]}>
             <View style={styles.tableRowHeader}>
               <Text style={[styles.tableRowTitle, { color: theme.text }]}>
                 {`${resolveFieldLabel(field)} #${rowIndex + 1}`}
@@ -550,7 +551,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
       case "textarea":
         return (
           <TextInput
-            style={[styles.textInput, { borderColor: theme.border, color: theme.text }]}
+            style={[styles.textInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surface || theme.card }]}
             value={fieldValue ?? ""}
             onChangeText={(text) => onChange(sectionId, field.id, text)}
             placeholder={field.placeholder || "Enter value"}
@@ -563,7 +564,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
       case "number":
         return (
           <TextInput
-            style={[styles.textInput, { borderColor: theme.border, color: theme.text }]}
+            style={[styles.textInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surface || theme.card }]}
             value={fieldValue !== undefined ? String(fieldValue) : ""}
             onChangeText={(text) => {
               const numeric = text === "" ? null : Number(text.replace(/[^0-9.-]/g, ""));
@@ -838,7 +839,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
                   <Image source={{ uri: item.uri }} style={styles.mediaImage} />
                   {editable && (
                     <TouchableOpacity
-                      style={styles.mediaRemove}
+                      style={[styles.mediaRemove, { backgroundColor: theme.card }]}
                       onPress={() => onRemoveMedia(field.id, index)}
                     >
                       <MaterialCommunityIcons
@@ -852,7 +853,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
               ))}
               {editable && (
                 <TouchableOpacity
-                  style={[styles.mediaAddButton, { borderColor: theme.border }]}
+                  style={[styles.mediaAddButton, { borderColor: theme.border, backgroundColor: theme.surface || theme.card }]}
                   onPress={() => handlePickImage(field, mediaForField.length)}
                   disabled={!canAdd}
                 >
@@ -914,18 +915,19 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
         </View>
       ))}
 
-      <View
-        style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-      >
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Technician Notes</Text>
+      <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Additional Notes</Text>
+        <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
+          Add any additional observations or notes about the inspection.
+        </Text>
         <TextInput
-          style={[styles.textArea, { borderColor: theme.border, color: theme.text }]}
-          placeholder="Add any additional observations"
-          placeholderTextColor={theme.placeholder}
+          style={[styles.textInput, styles.notesInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surface || theme.card }]}
           value={notes}
           onChangeText={onNotesChange}
+          placeholder="Enter any additional notes..."
+          placeholderTextColor={theme.placeholder}
           multiline
-          numberOfLines={5}
+          numberOfLines={4}
           editable={editable}
         />
       </View>
@@ -933,58 +935,72 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
   );
 };
 
+export default InspectionForm;
+
 const styles = StyleSheet.create({
   sectionCard: {
+    borderRadius: 16,
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
+    padding: 20,
     marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 18,
+    fontWeight: "bold",
     marginBottom: 4,
+    color: "#1F2937",
   },
   sectionDescription: {
-    fontSize: 13,
-    marginBottom: 12,
+    fontSize: 14,
+    marginBottom: 16,
+    color: "#6B7280",
   },
   fieldBlock: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   fieldLabelRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 4,
+    marginBottom: 8,
   },
   fieldLabel: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
+    color: "#374151",
+  },
+  helpText: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginBottom: 8,
+    lineHeight: 16,
   },
   textInput: {
     borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
+    padding: 12,
+    fontSize: 16,
+    borderColor: "#D1D5DB",
+    color: "#1F2937",
   },
-  textArea: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 14,
-    minHeight: 120,
+  notesInput: {
+    minHeight: 80,
     textAlignVertical: "top",
   },
   booleanRow: {
     flexDirection: "row",
     alignItems: "center",
+    paddingVertical: 8,
   },
   booleanLabel: {
     marginLeft: 12,
-    fontSize: 14,
+    fontSize: 16,
+    color: "#6B7280",
   },
   optionList: {
     flexDirection: "row",
@@ -992,183 +1008,179 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   optionChip: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
+    borderColor: "#D1D5DB",
   },
   mediaRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 12,
+    marginTop: 8,
   },
   mediaThumb: {
-    width: 72,
-    height: 72,
-    borderRadius: 10,
-    overflow: "hidden",
     position: "relative",
   },
   mediaImage: {
-    width: "100%",
-    height: "100%",
+    width: 80,
+    height: 80,
+    borderRadius: 8,
   },
   mediaRemove: {
     position: "absolute",
     top: -6,
     right: -6,
+    borderRadius: 9,
   },
   mediaAddButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 10,
-    borderWidth: 1,
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    borderWidth: 2,
     borderStyle: "dashed",
     justifyContent: "center",
     alignItems: "center",
   },
-  helpText: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  unsupported: {
-    fontSize: 13,
-    fontStyle: "italic",
-  },
-  signatureContainer: {
-    gap: 8,
-  },
-  signatureBox: {
+  datePickerButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     borderWidth: 1,
     borderRadius: 8,
-    padding: 16,
-    minHeight: 80,
+    padding: 12,
+  },
+  datePickerText: {
+    fontSize: 16,
+    color: "#1F2937",
+  },
+  iosPickerContainer: {
+    borderRadius: 8,
+    marginTop: 8,
+    overflow: "hidden",
+  },
+  iosPickerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  iosPickerButton: {
+    paddingVertical: 4,
+  },
+  iosPickerButtonText: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  iosDatePicker: {
+  },
+  signatureContainer: {
+    marginTop: 8,
+  },
+  signatureBox: {
+    height: 120,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#F9FAFB",
   },
   signaturePresent: {
-    flexDirection: "row",
     alignItems: "center",
-    gap: 8,
   },
   signatureText: {
+    marginTop: 8,
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "500",
   },
   signatureButton: {
-    flexDirection: "row",
     alignItems: "center",
-    gap: 8,
   },
   signatureButtonText: {
+    marginTop: 8,
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "500",
   },
   tableContainer: {
-    gap: 16,
+    marginTop: 8,
   },
   tableEmpty: {
-    fontSize: 13,
+    textAlign: "center",
     fontStyle: "italic",
+    padding: 16,
+    fontSize: 14,
   },
   tableRow: {
     borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 4,
-    gap: 12,
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
   },
   tableRowHeader: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
   },
   tableRowTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
   },
   tableRemoveButton: {
     padding: 4,
   },
   tableColumn: {
-    gap: 6,
+    marginBottom: 12,
   },
   tableColumnLabel: {
-    fontSize: 12,
-    textTransform: "uppercase",
+    fontSize: 14,
+    fontWeight: "500",
+    marginBottom: 6,
   },
   tableInput: {
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    borderRadius: 6,
+    padding: 8,
     fontSize: 14,
   },
   tableTextarea: {
-    minHeight: 80,
+    minHeight: 60,
     textAlignVertical: "top",
   },
   tableSelectRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
-  },
-  tableOptionChip: {
-    paddingVertical: 6,
-  },
-  tableAddButton: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    flexDirection: "row",
-    alignItems: "center",
     gap: 6,
   },
-  tableAddButtonText: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  datePickerButton: {
-    borderWidth: 1,
-    borderRadius: 8,
+  tableOptionChip: {
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    minHeight: 44,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
-  datePickerText: {
+  tableAddButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderStyle: "dashed",
+    borderRadius: 8,
+    padding: 16,
+    backgroundColor: "#F9FAFB",
+  },
+  tableAddButtonText: {
+    marginLeft: 8,
     fontSize: 14,
-    flex: 1,
+    fontWeight: "500",
   },
-  iosPickerContainer: {
-    backgroundColor: "white",
-    borderRadius: 10,
-    marginTop: 10,
-    overflow: "hidden",
-  },
-  iosPickerHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  iosPickerButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  iosPickerButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  iosDatePicker: {
-    backgroundColor: "white",
+  unsupported: {
+    fontSize: 14,
+    fontStyle: "italic",
+    padding: 12,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 8,
   },
 });
-
-export default InspectionForm;

@@ -35,15 +35,27 @@ export default function ActiveJobsPage() {
 
         setError(null);
 
-        const filters = status === "All" ? {} : { status };
+        // For Overdue filter, we need to fetch all jobs and filter client-side
+        // For All Jobs, we also fetch all to include overdue jobs
+        const filters = (status === "All" || status === "Overdue") ? {} : { status };
         const data = await fetchTechnicianJobs({
           ...filters,
           page: 1,
           limit: 50,
         });
 
+        let filteredJobs = data.jobs || [];
+
+        // Client-side filtering for Overdue - use backend's isOverdue flag
+        if (status === "Overdue") {
+          filteredJobs = filteredJobs.filter(job => {
+            return job.isOverdue === true &&
+                   (job.status === "Scheduled" || job.status === "In Progress");
+          });
+        }
+
         // Sort jobs by due date in ascending order
-        const sortedJobs = (data.jobs || []).sort((a, b) => {
+        const sortedJobs = filteredJobs.sort((a, b) => {
           const dateA = new Date(a.dueDate);
           const dateB = new Date(b.dueDate);
           return dateA.getTime() - dateB.getTime();
@@ -210,19 +222,9 @@ export default function ActiveJobsPage() {
         return dueDate <= today;
       };
 
-      // Check if job is due (overdue)
-      const isJobDue = () => {
-        const today = new Date();
-        const dueDate = new Date(item.dueDate);
-        today.setHours(0, 0, 0, 0);
-        dueDate.setHours(0, 0, 0, 0);
-        return (
-          dueDate < today &&
-          (item.status === "Scheduled" || item.status === "In Progress")
-        );
-      };
-
-      const isDue = isJobDue();
+      // Check if job is overdue using backend calculation
+      const isDue = item.isOverdue === true &&
+                   (item.status === "Scheduled" || item.status === "In Progress");
 
       return (
         <View
@@ -233,7 +235,11 @@ export default function ActiveJobsPage() {
               borderLeftColor: isDue ? theme.error : (item.status === "Completed" ? "#10B981" : theme.primary),
               borderWidth: isDue ? 2 : 0,
               borderColor: isDue ? theme.error : "transparent",
+              shadowColor: isDue ? theme.error : "#000",
+              shadowOpacity: isDue ? 0.15 : 0.08,
+              elevation: isDue ? 6 : 4,
             },
+            isDue && styles.overdueCard,
           ]}
         >
           <View style={styles.jobHeader}>
@@ -264,14 +270,14 @@ export default function ActiveJobsPage() {
               >
                 {isDue && (
                   <View
-                    style={[styles.dueBadge, { backgroundColor: theme.error }]}
+                    style={[styles.dueBadge, styles.overdueBadge, { backgroundColor: theme.error }]}
                   >
                     <MaterialCommunityIcons
-                      name="alert"
-                      size={12}
+                      name="alert-circle"
+                      size={14}
                       color="white"
                     />
-                    <Text style={styles.dueText}>DUE</Text>
+                    <Text style={[styles.dueText, styles.overdueText]}>OVERDUE</Text>
                   </View>
                 )}
                 <View
@@ -390,16 +396,19 @@ export default function ActiveJobsPage() {
                 <TouchableOpacity
                   style={[
                     styles.completeButton,
-                    { backgroundColor: theme.success },
+                    { backgroundColor: isDue ? theme.error : theme.success },
+                    isDue && styles.urgentCompleteButton,
                   ]}
                   onPress={() => openCompletionModal(item)}
                 >
                   <MaterialCommunityIcons
-                    name="check-circle"
+                    name={isDue ? "alert-circle-check" : "check-circle"}
                     size={20}
                     color="white"
                   />
-                  <Text style={styles.completeButtonText}>Complete Job</Text>
+                  <Text style={[styles.completeButtonText, isDue && styles.urgentCompleteText]}>
+                    {isDue ? "Complete Overdue" : "Complete Job"}
+                  </Text>
                 </TouchableOpacity>
               )}
 
@@ -442,6 +451,8 @@ export default function ActiveJobsPage() {
             ? "You don't have any jobs at the moment"
             : selectedStatus === "Active"
             ? "You don't have any active jobs at the moment"
+            : selectedStatus === "Overdue"
+            ? "You don't have any overdue jobs"
             : `No ${selectedStatus.toLowerCase()} jobs found`}
         </Text>
       </View>
@@ -471,6 +482,7 @@ export default function ActiveJobsPage() {
     { id: "Active", label: "Active" },
     { id: "Scheduled", label: "Scheduled" },
     { id: "In Progress", label: "In Progress" },
+    { id: "Overdue", label: "Overdue" },
     { id: "Completed", label: "Completed" },
   ];
   const styles = createStyles(theme);
@@ -747,9 +759,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "white",
       borderWidth: 1,
-      borderColor: theme.primary,
       paddingVertical: 12,
       borderRadius: 8,
     },
@@ -805,5 +815,40 @@ const createStyles = (theme: Theme) =>
       color: "white",
       marginLeft: 4,
       letterSpacing: 0.5,
+    },
+    overdueBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 16,
+      shadowColor: theme.error,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    overdueText: {
+      fontSize: 12,
+      fontWeight: "800",
+      letterSpacing: 0.8,
+    },
+    overdueCard: {
+      borderWidth: 2,
+      borderColor: theme.error,
+      shadowColor: theme.error,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    urgentCompleteButton: {
+      shadowColor: theme.error,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
+      elevation: 6,
+    },
+    urgentCompleteText: {
+      fontWeight: "800",
+      fontSize: 15,
     },
   });
