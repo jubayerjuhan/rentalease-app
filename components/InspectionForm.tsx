@@ -872,6 +872,105 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
           </View>
         );
       }
+      case "checkbox": {
+        const booleanValue = fieldValue === true || fieldValue === "true";
+        return (
+          <View style={styles.fieldContainer}>
+            <TouchableOpacity
+              style={[
+                styles.checkboxRow,
+                !editable && styles.disabled
+              ]}
+              onPress={() => editable && onChange(sectionId, field.id, !booleanValue)}
+              disabled={!editable}
+            >
+              <View style={[
+                styles.checkboxContainer,
+                { borderColor: theme.border },
+                booleanValue && { backgroundColor: theme.primary, borderColor: theme.primary }
+              ]}>
+                {booleanValue && (
+                  <MaterialCommunityIcons
+                    name="check"
+                    size={16}
+                    color="white"
+                  />
+                )}
+              </View>
+              <Text style={[
+                styles.checkboxLabel,
+                { color: theme.text },
+                !editable && { color: theme.textSecondary }
+              ]}>
+                {field.label}
+                {field.required && <Text style={{ color: theme.error }}> *</Text>}
+              </Text>
+            </TouchableOpacity>
+            {field.helpText && (
+              <Text style={[styles.helpText, { color: theme.textSecondary }]}>
+                {field.helpText}
+              </Text>
+            )}
+          </View>
+        );
+      }
+      case "checkbox-group": {
+        const groupValue = Array.isArray(fieldValue) ? fieldValue : [];
+        return (
+          <View style={styles.fieldContainer}>
+            <Text style={[styles.fieldLabel, { color: theme.text }]}>
+              {field.label}
+              {field.required && <Text style={{ color: theme.error }}> *</Text>}
+            </Text>
+            {field.options?.map((option) => {
+              const isSelected = groupValue.includes(option.value);
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.checkboxRow,
+                    !editable && styles.disabled
+                  ]}
+                  onPress={() => {
+                    if (!editable) return;
+                    const newValue = isSelected
+                      ? groupValue.filter(v => v !== option.value)
+                      : [...groupValue, option.value];
+                    onChange(sectionId, field.id, newValue);
+                  }}
+                  disabled={!editable}
+                >
+                  <View style={[
+                    styles.checkboxContainer,
+                    { borderColor: theme.border },
+                    isSelected && { backgroundColor: theme.primary, borderColor: theme.primary }
+                  ]}>
+                    {isSelected && (
+                      <MaterialCommunityIcons
+                        name="check"
+                        size={16}
+                        color="white"
+                      />
+                    )}
+                  </View>
+                  <Text style={[
+                    styles.checkboxLabel,
+                    { color: theme.text },
+                    !editable && { color: theme.textSecondary }
+                  ]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            {field.helpText && (
+              <Text style={[styles.helpText, { color: theme.textSecondary }]}>
+                {field.helpText}
+              </Text>
+            )}
+          </View>
+        );
+      }
       default:
         return (
           <Text style={[styles.unsupported, { color: theme.textSecondary }]}>
@@ -1030,6 +1129,27 @@ const styles = StyleSheet.create({
   helpText: {
     fontSize: 12,
     marginTop: 4,
+  },
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  checkboxContainer: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderRadius: 4,
+    marginRight: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    flex: 1,
+  },
+  disabled: {
+    opacity: 0.6,
   },
   unsupported: {
     fontSize: 13,

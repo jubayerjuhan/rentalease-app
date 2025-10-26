@@ -23,6 +23,7 @@ import {
   fetchInspectionTemplates,
   fetchInspectionTemplate,
   submitInspectionReport,
+  fetchJobDetails,
 } from "@services/jobs";
 
 export interface InvoiceLineItem {
@@ -99,36 +100,532 @@ const defaultLineItem = (): InvoiceLineItem => ({
   amount: 0,
 });
 
-const initializeFormValues = (
+const DEFAULT_TEST_NOTES =
+  "Auto-generated testing notes. Replace before final submission.";
+const PLACEHOLDER_IMAGE_DATA_URI =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4AWP4//8/AwAI/AL+XoELLQAAAABJRU5ErkJggg==";
+
+const placeholderImageUri = (_seed: number) => PLACEHOLDER_IMAGE_DATA_URI;
+
+const hasMeaningfulDefault = (value: any): boolean => {
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  if (value === null || value === undefined) {
+    return false;
+  }
+  if (typeof value === "string") {
+    return value.trim().length > 0;
+  }
+  return true;
+};
+
+const getGenericPrefillValue = (
+  field: InspectionField,
+  today: string
+): any => {
+  const baseText =
+    field.placeholder || field.label || field.question || "Auto-filled value";
+
+  switch (field.type) {
+    case "text":
+    case "textarea":
+      return `${baseText} (auto)`;
+    case "number":
+      if (typeof (field as any).defaultValue === "number") {
+        return (field as any).defaultValue;
+      }
+      if (typeof field.min === "number") {
+        return field.min;
+      }
+      return 1;
+    case "date":
+      return today;
+    case "time":
+      return "09:00";
+    case "boolean":
+    case "checkbox":
+      return true;
+    case "select":
+      return field.options?.[0]?.value || "";
+    case "multi-select":
+    case "checkbox-group":
+      return (field.options || []).map((option) => option.value);
+    case "yes-no":
+      return "yes";
+    case "yes-no-na":
+      return "yes";
+    case "pass-fail":
+    case "pass-fail-na":
+      return "pass";
+    case "rating":
+      return field.max || 5;
+    case "signature":
+      return `signature_${Date.now()}`;
+    case "photo":
+    case "photo-multi":
+      return [];
+    default:
+      return `${baseText} (auto)`;
+  }
+};
+
+const addYears = (base: string, years: number) => {
+  const date = new Date(base);
+  if (Number.isNaN(date.getTime())) {
+    return base;
+  }
+  date.setFullYear(date.getFullYear() + years);
+  return date.toISOString().split("T")[0];
+};
+
+const buildTablePlaceholderRow = (
+  columns: any[],
+  today: string,
+  template: InspectionTemplate,
+  fieldId: string
+) => {
+  if (!Array.isArray(columns) || !columns.length) {
+    return null;
+  }
+
+  if (template.jobType === "Smoke" && fieldId === "alarm-records") {
+    const manufactureDate = addYears(today, -2);
+    const expiryDate = addYears(today, 8);
+    const batteryExpiry = addYears(today, 8);
+
+    return {
+      "alarm-id": "001",
+      location: "hallway-bedrooms",
+      "location-other": "",
+      mounting: "ceiling",
+      brand: "Lifeguard",
+      model: "LG-240",
+      "model-not-visible": false,
+      "alarm-type": "photoelectric",
+      "power-source": "mains-240v",
+      "power-source-other": "",
+      interconnection: "hard-wired",
+      "interconnected-all-sound": "yes",
+      "manufacture-date": manufactureDate,
+      "manufacture-date-not-readable": false,
+      "expiry-date": expiryDate,
+      "expiry-date-not-stated": false,
+      "age-years": 2,
+      "over-10-years": "no",
+      "battery-present": "yes",
+      "battery-replaced-today": "yes",
+      "battery-type": "lithium-10yr",
+      "battery-expiry": batteryExpiry,
+      "push-test-result": "pass",
+      "sound-level-db": 88,
+      "led-status": "flashing-normal",
+      "led-status-other": "",
+      "clearances-ok": "yes",
+      "distance-to-wall": 55,
+      "distance-to-corner": 110,
+      "distance-to-fan": 150,
+      "physical-condition": ["securely-mounted", "no-paint-dust"],
+      "alarm-comments": "Auto-filled smoke alarm record for testing",
+      "compliance-status": "compliant",
+      "non-compliance-reasons": [],
+      "non-compliance-other": "",
+      "actions-taken": ["replaced-battery"],
+      "replaced-unit-brand": "",
+      "replaced-unit-model": "",
+      "replaced-unit-mfd": "",
+      "replaced-unit-install-date": today,
+      "replaced-unit-warranty": 5,
+      "replaced-interconnection-verified": "yes",
+    };
+  }
+
+  if (!Array.isArray(columns) || !columns.length) {
+    return null;
+  }
+
+  return columns.reduce((row: Record<string, any>, column: any) => {
+    switch (column.type) {
+      case "number":
+        if (typeof column.min === "number") {
+          row[column.id] = column.min || 1;
+        } else {
+          row[column.id] = 1;
+        }
+        break;
+      case "select":
+        row[column.id] =
+          column.options && column.options.length
+            ? column.options[0].value
+            : "";
+        break;
+      case "date":
+        row[column.id] = today;
+        break;
+      case "checkbox":
+        row[column.id] = true;
+        break;
+      case "yes-no":
+        row[column.id] = "yes";
+        break;
+      case "yes-no-na":
+        row[column.id] = "yes";
+        break;
+      case "textarea":
+        row[column.id] =
+          column.placeholder || `${column.label || "Detail"} (auto)`;
+        break;
+      default:
+        row[column.id] =
+          column.placeholder || `${column.label || "Value"} (auto)`;
+        break;
+    }
+    return row;
+  }, {} as Record<string, any>);
+};
+
+const generateMediaPrefillForTemplate = (
   template: InspectionTemplate
+): Record<string, InspectionMediaUpload[]> => {
+  const result: Record<string, InspectionMediaUpload[]> = {};
+  let seed = 1;
+
+  template.sections.forEach((section) => {
+    section.fields.forEach((field) => {
+      if (field.type === "photo" || field.type === "photo-multi") {
+        const baseMedia = {
+          uri: placeholderImageUri(seed),
+          name: `${field.id}-${seed}.png`,
+          type: "image/png",
+        };
+        if (field.type === "photo-multi") {
+          result[field.id] = [
+            baseMedia,
+            { ...baseMedia, name: `${field.id}-${seed + 1}.png` },
+          ];
+          seed += 2;
+        } else {
+          result[field.id] = [baseMedia];
+          seed += 1;
+        }
+      }
+    });
+  });
+
+  return result;
+};
+
+const initializeFormValues = (
+  template: InspectionTemplate,
+  jobDetailsData?: any
 ): InspectionFormValues => {
+  const today = new Date().toISOString().split("T")[0];
+
+  const genericPrefill = (field: InspectionField) =>
+    getGenericPrefillValue(field, today);
+
+  const getAutoPrefillValue = (
+    field: InspectionField,
+    sectionId: string
+  ): any => {
+    const explicitDefault = (field as any).defaultValue;
+    if (hasMeaningfulDefault(explicitDefault)) {
+      return explicitDefault;
+    }
+
+    // Pre-fill with real job data when available
+    if (jobDetailsData) {
+      // Property and address information
+      if (field.id === "property-address" && jobDetailsData.property?.address) {
+        return `${jobDetailsData.property.address.street}, ${jobDetailsData.property.address.suburb}, ${jobDetailsData.property.address.state} ${jobDetailsData.property.address.postcode}`;
+      }
+      if (field.id === "property-type" && jobDetailsData.property?.propertyType) {
+        return jobDetailsData.property.propertyType.toLowerCase();
+      }
+      if (field.id === "bedroom-count" && jobDetailsData.property?.bedrooms) {
+        return jobDetailsData.property.bedrooms;
+      }
+      if (field.id === "storeys-count" && jobDetailsData.property?.storeys) {
+        return jobDetailsData.property.storeys;
+      }
+
+      // Tenant information
+      if (field.id === "tenant-name" && jobDetailsData.property?.tenant) {
+        return `${jobDetailsData.property.tenant.firstName || ''} ${jobDetailsData.property.tenant.lastName || ''}`.trim();
+      }
+      if (field.id === "tenant-phone" && jobDetailsData.property?.tenant?.phone) {
+        return jobDetailsData.property.tenant.phone;
+      }
+      if (field.id === "tenant-email" && jobDetailsData.property?.tenant?.email) {
+        return jobDetailsData.property.tenant.email;
+      }
+
+      // Job details
+      if (field.id === "job-reference" && jobDetailsData.jobReference) {
+        return jobDetailsData.jobReference;
+      }
+      if (field.id === "inspector-name" && jobDetailsData.assignedTechnician) {
+        return `${jobDetailsData.assignedTechnician.firstName || ''} ${jobDetailsData.assignedTechnician.lastName || ''}`.trim();
+      }
+      if (field.id === "inspection-date") {
+        return new Date().toISOString().split("T")[0];
+      }
+      if (field.id === "next-service-due") {
+        const nextYear = new Date();
+        nextYear.setFullYear(nextYear.getFullYear() + 1);
+        return nextYear.toISOString().split("T")[0];
+      }
+
+      // Property manager information
+      if (field.id === "property-manager-name" && jobDetailsData.property?.propertyManager) {
+        return `${jobDetailsData.property.propertyManager.firstName || ''} ${jobDetailsData.property.propertyManager.lastName || ''}`.trim();
+      }
+      if (field.id === "property-manager-phone" && jobDetailsData.property?.propertyManager?.phone) {
+        return jobDetailsData.property.propertyManager.phone;
+      }
+      if (field.id === "property-manager-email" && jobDetailsData.property?.propertyManager?.email) {
+        return jobDetailsData.property.propertyManager.email;
+      }
+
+      // Access notes based on job priority or type
+      if (field.id === "access-notes") {
+        const notes = ["full-access"];
+        if (jobDetailsData.priority === "High" || jobDetailsData.priority === "Critical") {
+          notes.push("keys-provided");
+        }
+        return notes;
+      }
+    }
+
+    if (template.jobType === "Smoke") {
+      switch (field.id) {
+        case "access-notes":
+          return ["pets-present"];
+        case "access-notes-detail":
+          return "Auto-filled access notes";
+        case "previous-service-date":
+          return addYears(today, -1);
+        case "previous-service-unknown":
+          return false;
+        case "storeys-covered":
+          return ["ground", "level1"];
+        case "hallway-bedrooms-present":
+        case "between-sleeping-areas":
+        case "every-storey-covered":
+          return "yes";
+        case "attached-garage":
+          return "na";
+        case "any-locations-missing":
+          return "no";
+        case "missing-locations":
+          return "";
+        case "alarm-count":
+          return 3;
+        case "alarms-inspected-count":
+          return 3;
+        case "alarms-replaced-count":
+          return 1;
+        case "alarms-non-compliant-count":
+          return 0;
+        case "general-comments":
+          return "Auto-filled property summary for testing";
+        case "overall-status":
+          return "compliant";
+        case "technician-declaration":
+          return true;
+        default:
+          break;
+      }
+    }
+
+    if (
+      template.jobType === "Gas" ||
+      template.title.toLowerCase().includes("gas")
+    ) {
+      if (
+        sectionId === "property-details" ||
+        field.id.includes("property") ||
+        field.id.includes("date") ||
+        field.id.includes("inspector") ||
+        field.id.includes("license")
+      ) {
+        switch (field.id) {
+          case "inspection-date":
+          case "inspectionDate":
+            return today;
+          case "inspector-name":
+          case "inspectorName":
+            return "John Smith";
+          case "license-number":
+          case "licenseNumber":
+            return "LIC123456789";
+          case "vba-record-number":
+          case "vbaRecordNumber":
+            return "VBA987654321";
+          default:
+            if (field.type === "boolean") {
+              return true;
+            }
+            if (field.type === "select") {
+              return field.options?.[0]?.value || "Yes";
+            }
+            return genericPrefill(field);
+        }
+      }
+
+      if (
+        sectionId === "gas-installation" ||
+        field.id.includes("gas") ||
+        field.id.includes("cylinder")
+      ) {
+        if (field.type === "boolean") {
+          return true;
+        }
+        if (field.type === "select") {
+          return field.options?.[0]?.value || "Yes";
+        }
+        if (field.type === "radio") {
+          return "Yes";
+        }
+        if (
+          field.id.includes("comment") ||
+          field.id.includes("note")
+        ) {
+          return "All components inspected and functioning correctly";
+        }
+      }
+
+      if (
+        sectionId.includes("appliance") ||
+        field.id.includes("appliance") ||
+        field.id.includes("isolation")
+      ) {
+        if (field.type === "boolean") {
+          return true;
+        }
+        if (field.type === "select") {
+          return field.options?.[0]?.value || "Yes";
+        }
+        if (field.type === "radio") {
+          return "Yes";
+        }
+        if (
+          field.id.includes("comment") ||
+          field.id.includes("note")
+        ) {
+          return "Appliance functioning correctly";
+        }
+      }
+
+      if (
+        field.id.includes("correctly") ||
+        field.id.includes("leakage") ||
+        field.id.includes("valve") ||
+        field.id.includes("test") ||
+        field.id.includes("safe") ||
+        field.id.includes("compliant")
+      ) {
+        if (field.type === "boolean") {
+          return true;
+        }
+        if (field.type === "select" || field.type === "radio") {
+          return field.id.includes("leakage") || field.id.includes("test")
+            ? "Pass"
+            : "Yes";
+        }
+        return genericPrefill(field);
+      }
+
+      if (field.type === "boolean") {
+        return true;
+      }
+      if (field.type === "select" || field.type === "radio") {
+        if (field.id.includes("test") || field.id.includes("leakage")) {
+          return (
+            field.options?.find((option) => option.value === "Pass")?.value ||
+            field.options?.[0]?.value ||
+            "Pass"
+          );
+        }
+        return (
+          field.options?.find((option) => option.value === "Yes")?.value ||
+          field.options?.[0]?.value ||
+          "Yes"
+        );
+      }
+      if (
+        field.id.includes("comment") ||
+        field.id.includes("note") ||
+        field.id.includes("observation")
+      ) {
+        return "Inspection completed successfully. All safety standards met.";
+      }
+    }
+
+    return genericPrefill(field);
+  };
+
   return template.sections.reduce((acc, section) => {
     const sectionValues: Record<string, any> = {};
     section.fields.forEach((field) => {
       if (field.type === "table") {
-        const columns = field.columns || field.metadata?.columns || [];
-        // Check if field has default value
-        if (
-          (field as any).defaultValue &&
-          Array.isArray((field as any).defaultValue)
-        ) {
-          sectionValues[field.id] = (field as any).defaultValue;
-        } else if (field.required && columns.length) {
-          const emptyRow = columns.reduce((row, column) => {
-            row[column.id] = "";
-            return row;
-          }, {} as Record<string, any>);
-          sectionValues[field.id] = [emptyRow];
+        const explicitDefault = (field as any).defaultValue;
+        if (hasMeaningfulDefault(explicitDefault)) {
+          sectionValues[field.id] = explicitDefault;
         } else {
-          sectionValues[field.id] = [];
+          const columns =
+            field.columns || (field as any).metadata?.columns || [];
+          const placeholderRow = buildTablePlaceholderRow(
+            columns,
+            today,
+            template,
+            field.id
+          );
+          sectionValues[field.id] = placeholderRow ? [placeholderRow] : [];
         }
-      } else if (field.type === "multi-select") {
-        sectionValues[field.id] = [];
-      } else if (field.type === "boolean") {
-        sectionValues[field.id] = false;
-      } else {
-        // Use defaultValue if available, otherwise use empty string
-        sectionValues[field.id] = (field as any).defaultValue || "";
+        return;
+      }
+
+      const autoValue = getAutoPrefillValue(field, section.id);
+
+      switch (field.type) {
+        case "multi-select":
+        case "checkbox-group":
+          if (Array.isArray(autoValue) && autoValue.length) {
+            sectionValues[field.id] = autoValue;
+          } else if (autoValue !== undefined && autoValue !== null) {
+            sectionValues[field.id] = Array.isArray(autoValue)
+              ? autoValue
+              : [autoValue];
+          } else {
+            sectionValues[field.id] = (field.options || []).map(
+              (option) => option.value
+            );
+          }
+          break;
+        case "boolean":
+        case "checkbox":
+          sectionValues[field.id] =
+            autoValue !== undefined && autoValue !== null
+              ? Boolean(autoValue)
+              : true;
+          break;
+        case "number":
+          if (autoValue !== undefined && autoValue !== null) {
+            sectionValues[field.id] = autoValue;
+          } else if (typeof field.min === "number") {
+            sectionValues[field.id] = field.min;
+          } else {
+            sectionValues[field.id] = 1;
+          }
+          break;
+        case "photo":
+        case "photo-multi":
+          sectionValues[field.id] = autoValue ?? [];
+          break;
+        default:
+          sectionValues[field.id] =
+            autoValue !== undefined && autoValue !== null ? autoValue : "";
       }
     });
     acc[section.id] = sectionValues;
@@ -192,6 +689,8 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [templateError, setTemplateError] = useState<string | null>(null);
+  const [jobDetails, setJobDetails] = useState<any>(null);
+  const [loadingJobDetails, setLoadingJobDetails] = useState(false);
   const [selectedTemplate, setSelectedTemplate] =
     useState<InspectionTemplate | null>(null);
 
@@ -212,12 +711,18 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
   >(undefined);
 
   const [hasInvoice, setHasInvoice] = useState(false);
-  const [invoiceDescription, setInvoiceDescription] = useState("");
+  const [invoiceDescription, setInvoiceDescription] = useState("Safety inspection and compliance check for rental property");
   const [lineItems, setLineItems] = useState<InvoiceLineItem[]>([
-    defaultLineItem(),
+    {
+      id: `${Date.now()}`,
+      name: "Gas Safety Inspection Service",
+      quantity: 1,
+      rate: 150.00,
+      amount: 150.00,
+    },
   ]);
   const [taxPercentage, setTaxPercentage] = useState(10);
-  const [invoiceNotes, setInvoiceNotes] = useState("");
+  const [invoiceNotes, setInvoiceNotes] = useState("Payment due within 30 days of completion");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -231,24 +736,66 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
     setInspectionReportId(null);
     setInspectionReportUrl(undefined);
     setHasInvoice(false);
-    setInvoiceDescription("");
-    setLineItems([defaultLineItem()]);
+    setInvoiceDescription("Gas safety inspection and compliance check for rental property");
+    setLineItems([{
+      id: `${Date.now()}`,
+      name: "Gas Safety Inspection Service",
+      quantity: 1,
+      rate: 150.00,
+      amount: 150.00,
+    }]);
     setTaxPercentage(10);
-    setInvoiceNotes("");
+    setInvoiceNotes("Payment due within 30 days of completion");
     setTemplateError(null);
     setLoadingTemplates(false);
+    setJobDetails(null);
+    setLoadingJobDetails(false);
     setBedroomCount(1);
     setBathroomCount(1);
     setLoadingDynamicTemplate(false);
   };
 
+  const applyTemplatePrefill = (templateToApply: InspectionTemplate) => {
+    setSelectedTemplate(templateToApply);
+    setFormValues(initializeFormValues(templateToApply, jobDetails));
+    setMediaByField(generateMediaPrefillForTemplate(templateToApply));
+    setNotes(DEFAULT_TEST_NOTES);
+    setInspectionReportId(null);
+    setInspectionReportUrl(undefined);
+  };
+
   useEffect(() => {
     if (visible) {
+      loadJobDetails();
       loadTemplates();
     } else {
       resetState();
     }
   }, [visible]);
+
+  // Re-initialize form values when both template and job details are loaded
+  useEffect(() => {
+    if (selectedTemplate && jobDetails && visible) {
+      console.log("[JobCompletionModal] Re-initializing form with job data");
+      const initialValues = initializeFormValues(selectedTemplate, jobDetails);
+      setFormValues(initialValues);
+    }
+  }, [selectedTemplate, jobDetails, visible]);
+
+  const loadJobDetails = async () => {
+    try {
+      setLoadingJobDetails(true);
+      console.log("[JobCompletionModal] Fetching job details for jobId:", jobId);
+      const details = await fetchJobDetails(jobId);
+      console.log("[JobCompletionModal] Job details loaded:", details);
+      setJobDetails(details);
+    } catch (error) {
+      console.error("[JobCompletionModal] Failed to load job details:", error);
+      // Don't show error to user, just continue without pre-filled data
+    } finally {
+      setLoadingJobDetails(false);
+    }
+  };
 
   const loadTemplates = async () => {
     try {
@@ -259,10 +806,25 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       setSelectedTemplate(null);
       setFormValues({});
       const fetched = await fetchInspectionTemplates();
-      const versionTwoTemplates = fetched.filter(
-        (template) => template.version === 2
-      );
-      setTemplates(versionTwoTemplates);
+
+      // Filter templates to show the appropriate versions:
+      // - Version 2 templates for Electrical, Gas, MinimumSafetyStandard
+      // - Version 3 for the new Smoke-only template (exclude legacy v2 smoke+electrical)
+      // - Version 3 for the new GasSmoke combined template
+      const filteredTemplates = fetched.filter((template) => {
+        if (template.jobType === "Smoke") {
+          // For smoke jobs, only show the new version 3 (smoke-only) template
+          return template.version >= 3;
+        } else if (template.jobType === "GasSmoke") {
+          // For Gas+Smoke combined jobs, show version 3
+          return template.version >= 3;
+        } else {
+          // For other job types, show version 2 templates
+          return template.version === 2;
+        }
+      });
+
+      setTemplates(filteredTemplates);
     } catch (error: any) {
       console.error("Failed to load templates", error);
       setTemplateError(error?.message || "Unable to load inspection templates");
@@ -298,7 +860,7 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
     } else {
       // For other templates, initialize form and go directly to form step
       if (Object.keys(formValues).length === 0) {
-        setFormValues(initializeFormValues(selectedTemplate));
+        setFormValues(initializeFormValues(selectedTemplate, jobDetails));
       }
       const formStepIndex = steps.findIndex((step) => step.key === "form");
       goToStep(formStepIndex);
@@ -334,11 +896,8 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
         }
       );
 
-      // Update the selected template with the dynamic version
-      setSelectedTemplate(dynamicTemplate);
-      setFormValues(initializeFormValues(dynamicTemplate));
+      applyTemplatePrefill(dynamicTemplate);
 
-      // Go to form step
       const nextStepIndex = steps.findIndex((step) => step.key === "form");
       goToStep(nextStepIndex);
     } catch (error: any) {
@@ -523,12 +1082,7 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
   };
 
   const handleTemplateSelect = (template: InspectionTemplate) => {
-    setSelectedTemplate(template);
-    setFormValues(initializeFormValues(template));
-    setMediaByField({});
-    setNotes("");
-    setInspectionReportId(null);
-    setInspectionReportUrl(undefined);
+    applyTemplatePrefill(template);
   };
 
   const handleValueChange = (
@@ -688,6 +1242,16 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
                     >
                       {`Version ${template.version}`}
                     </Text>
+                    {template.metadata?.summary ? (
+                      <Text
+                        style={[
+                          styles.templateSummary,
+                          { color: theme.textSecondary },
+                        ]}
+                      >
+                        {template.metadata.summary}
+                      </Text>
+                    ) : null}
                   </TouchableOpacity>
                 );
               })}
@@ -1497,6 +2061,10 @@ const createStyles = (theme: any, isDark: boolean) =>
     },
     templateMeta: {
       fontSize: 12,
+    },
+    templateSummary: {
+      fontSize: 12,
+      marginTop: 4,
     },
     emptyText: {
       textAlign: "center",
