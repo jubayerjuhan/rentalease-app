@@ -149,6 +149,7 @@ export type InspectionFieldType =
   | "yes-no"
   | "yes-no-na"
   | "pass-fail"
+  | "checkbox"
   | "checkbox-group"
   | "table";
 

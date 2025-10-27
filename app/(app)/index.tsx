@@ -9,6 +9,7 @@ import {
   Alert,
   Dimensions,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { PieChart, BarChart } from "react-native-chart-kit";
@@ -16,10 +17,15 @@ import { fetchDashboardData, DashboardData } from "@services/dashboard";
 import { getProfile, TechnicianProfile } from "@services/profile";
 import { useTheme, Theme } from "../../contexts/ThemeContext";
 
-const screenWidth = Dimensions.get("window").width;
-
 export default function HomePage() {
   const { theme, isDark } = useTheme();
+  const { width: windowWidth } = useWindowDimensions();
+  const fallbackWindow = typeof Dimensions.get === "function" ? Dimensions.get("window") : undefined;
+  const fallbackWidth =
+    fallbackWindow && typeof fallbackWindow.width === "number" && fallbackWindow.width > 0
+      ? fallbackWindow.width
+      : 360;
+  const screenWidth = windowWidth && windowWidth > 0 ? windowWidth : fallbackWidth;
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(
     null
   );
@@ -58,7 +64,7 @@ export default function HomePage() {
     loadDashboardData(true);
   };
 
-  const styles = createStyles(theme, isDark);
+  const styles = createStyles(theme, isDark, screenWidth);
 
   if (loading) {
     return (
@@ -453,7 +459,8 @@ const formatDateTime = (dateString: string) => {
   });
 };
 
-const createStyles = (theme: Theme, isDark: boolean) => StyleSheet.create({
+const createStyles = (theme: Theme, isDark: boolean, screenWidth: number) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background,

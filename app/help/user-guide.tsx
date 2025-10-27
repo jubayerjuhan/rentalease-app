@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -25,8 +24,6 @@ interface GuideStep {
   description: string;
   tip?: string;
 }
-
-const { width } = Dimensions.get('window');
 
 export default function UserGuideScreen() {
   const { theme } = useTheme();

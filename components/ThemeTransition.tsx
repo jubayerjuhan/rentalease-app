@@ -1,15 +1,17 @@
 import React, { useEffect, useRef } from 'react';
-import { 
-  Animated, 
-  Dimensions, 
-  StyleSheet, 
-  View, 
+import {
+  Animated,
+  Dimensions,
+  StyleSheet,
+  View,
   Easing,
+  useWindowDimensions,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const DEFAULT_SCREEN_WIDTH = 360;
+const DEFAULT_SCREEN_HEIGHT = 640;
 
 interface ThemeTransitionProps {
   isVisible: boolean;
@@ -26,6 +28,20 @@ export const ThemeTransition: React.FC<ThemeTransitionProps> = ({
   oldThemeColor,
   onAnimationComplete,
 }) => {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const fallbackWindow = typeof Dimensions.get === 'function' ? Dimensions.get('window') : undefined;
+  const screenWidth =
+    windowWidth && windowWidth > 0
+      ? windowWidth
+      : fallbackWindow && typeof fallbackWindow.width === 'number' && fallbackWindow.width > 0
+      ? fallbackWindow.width
+      : 360;
+  const screenHeight =
+    windowHeight && windowHeight > 0
+      ? windowHeight
+      : fallbackWindow && typeof fallbackWindow.height === 'number' && fallbackWindow.height > 0
+      ? fallbackWindow.height
+      : 640;
   // Core animation values
   const mainRippleScale = useRef(new Animated.Value(0)).current;
   const secondaryRippleScale = useRef(new Animated.Value(0)).current;
@@ -421,12 +437,17 @@ export const ThemeTransition: React.FC<ThemeTransitionProps> = ({
   });
 
   return (
-    <View style={styles.container} pointerEvents="none">
+    <View
+      style={[styles.container, { width: screenWidth, height: screenHeight }]}
+      pointerEvents="none"
+    >
       {/* Smooth background transition */}
       <Animated.View
         style={[
           styles.background,
           {
+            width: screenWidth,
+            height: screenHeight,
             backgroundColor: interpolatedColor,
             opacity: colorProgress.interpolate({
               inputRange: [0, 0.2, 0.8, 1],
@@ -489,16 +510,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    width: screenWidth,
-    height: screenHeight,
+    width: DEFAULT_SCREEN_WIDTH,
+    height: DEFAULT_SCREEN_HEIGHT,
     zIndex: 9999,
   },
   background: {
     position: 'absolute',
     top: 0,
     left: 0,
-    width: screenWidth,
-    height: screenHeight,
+    width: DEFAULT_SCREEN_WIDTH,
+    height: DEFAULT_SCREEN_HEIGHT,
   },
   ripple: {
     position: 'absolute',

@@ -18,6 +18,7 @@ import type {
   InspectionTemplate,
   InspectionMediaUpload,
   InspectionField,
+  InspectionTableColumn,
 } from "@services/jobs";
 import {
   fetchInspectionTemplates,
@@ -106,7 +107,7 @@ const initializeFormValues = (
     const sectionValues: Record<string, any> = {};
     section.fields.forEach((field) => {
       if (field.type === "table") {
-        const columns = field.columns || field.metadata?.columns || [];
+        const columns = (field.columns || field.metadata?.columns || []) as InspectionTableColumn[];
         // Check if field has default value
         if (
           (field as any).defaultValue &&
@@ -114,7 +115,7 @@ const initializeFormValues = (
         ) {
           sectionValues[field.id] = (field as any).defaultValue;
         } else if (field.required && columns.length) {
-          const emptyRow = columns.reduce((row, column) => {
+          const emptyRow = columns.reduce<Record<string, any>>((row, column) => {
             // Prefill table rows with test data
             if (column.type === "select" && column.options?.length) {
               row[column.id] = column.options[0].value;
@@ -153,7 +154,7 @@ const initializeFormValues = (
       } else if (field.type === "number") {
         // Prefill with test number
         sectionValues[field.id] = "123";
-      } else if (field.type === "yes-no" || field.type === "yes-no-na") {
+      } else if (field.type === "yes-no" || field.type === "yes-no-na" || field.type === "checkbox") {
         // Prefill with "yes"
         sectionValues[field.id] = "yes";
       } else if (field.type === "pass-fail") {
@@ -167,6 +168,37 @@ const initializeFormValues = (
     acc[section.id] = sectionValues;
     return acc;
   }, {} as InspectionFormValues);
+};
+
+const mergeFormValuesWithDefaults = (
+  template: InspectionTemplate,
+  values: InspectionFormValues
+): InspectionFormValues => {
+  const defaults = initializeFormValues(template);
+  return template.sections.reduce((acc, section) => {
+    acc[section.id] = {
+      ...defaults[section.id],
+      ...(values[section.id] || {}),
+    };
+    return acc;
+  }, {} as InspectionFormValues);
+};
+
+const formValuesChanged = (
+  template: InspectionTemplate,
+  previous: InspectionFormValues,
+  next: InspectionFormValues
+) => {
+  return template.sections.some((section) => {
+    const prevSection = previous[section.id] || {};
+    const nextSection = next[section.id] || {};
+    const prevKeys = Object.keys(prevSection);
+    const nextKeys = Object.keys(nextSection);
+    if (prevKeys.length !== nextKeys.length) {
+      return true;
+    }
+    return nextKeys.some((key) => nextSection[key] !== prevSection[key]);
+  });
 };
 
 const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
@@ -299,6 +331,9 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       setFormValues({});
       const fetched = await fetchInspectionTemplates();
 
+      // Debug: Log all available templates
+      console.log("[JobCompletionModal] All fetched templates:", fetched.map(t => ({ title: t.title, version: t.version })));
+
       // Define the 4 specific template titles we want to show
       const allowedTemplateTitles = [
         "Electrical & Smoke Safety Inspection",
@@ -307,10 +342,20 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
         "Minimum Safety Standard Inspection"
       ];
 
-      // Filter templates to only show allowed titles
-      const allowedTemplates = fetched.filter(template =>
-        allowedTemplateTitles.includes(template.title)
-      );
+      // TEMPORARY: Show ALL templates to debug what's available
+      console.log("[JobCompletionModal] DEBUGGING - Showing ALL templates temporarily");
+      const allowedTemplates = fetched; // Show everything for now
+
+      // Original filtering logic (commented out for debugging)
+      // const allowedTemplates = fetched.filter(template => {
+      //   const templateTitle = template.title?.toLowerCase?.() || '';
+      //   return allowedTemplateTitles.some(allowedTitle =>
+      //     templateTitle.includes(allowedTitle.toLowerCase()) ||
+      //     allowedTitle.toLowerCase().includes(templateTitle)
+      //   );
+      // });
+
+      console.log("[JobCompletionModal] Allowed templates found:", allowedTemplates.map(t => ({ title: t.title, version: t.version })));
 
       // Get the latest version of each template title (no version filtering needed)
       const latestTemplates = allowedTemplateTitles
@@ -419,11 +464,27 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       Alert.alert("Template missing", "Select a template before proceeding.");
       return;
     }
+
+    const normalizedValues = mergeFormValuesWithDefaults(
+      selectedTemplate,
+      formValues
+    );
+
+    console.log("[JobCompletionModal] Original form values:", JSON.stringify(formValues, null, 2));
+    console.log("[JobCompletionModal] Normalized values:", JSON.stringify(normalizedValues, null, 2));
+
+    if (formValuesChanged(selectedTemplate, formValues, normalizedValues)) {
+      setFormValues(normalizedValues);
+    }
+
     const missing = validateRequiredFields(
       selectedTemplate,
-      formValues,
+      normalizedValues,
       mediaByField
     );
+
+    console.log("[JobCompletionModal] Missing fields:", missing);
+
     if (missing.length) {
       Alert.alert(
         "Incomplete form",
@@ -438,45 +499,52 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!selectedTemplate) {
-      Alert.alert("Template missing", "Select a template before submitting.");
-      return;
-    }
-    const missing = validateRequiredFields(
-      selectedTemplate,
-      formValues,
-      mediaByField
-    );
-    if (missing.length) {
-      Alert.alert(
-        "Incomplete form",
-        `Please complete required fields: ${missing.slice(0, 5).join(", ")}${
-          missing.length > 5 ? "…" : ""
-        }`
-      );
-      goToStep(1);
-      return;
-    }
-
-    if (hasInvoice && !invoiceDescription.trim()) {
-      Alert.alert("Invoice required", "Please enter an invoice description.");
-      return;
-    }
-
-    if (hasInvoice) {
-      const validItems = lineItems.filter(
-        (item) => item.name.trim() && item.quantity > 0 && item.rate > 0
-      );
-      if (validItems.length === 0) {
-        Alert.alert(
-          "Invoice items",
-          "Add at least one line item with name, quantity, and rate."
-        );
+    try {
+      if (!selectedTemplate) {
+        Alert.alert("Template missing", "Select a template before submitting.");
         return;
       }
-    }
+      const normalizedValues = mergeFormValuesWithDefaults(
+        selectedTemplate,
+        formValues
+      );
+      if (formValuesChanged(selectedTemplate, formValues, normalizedValues)) {
+        setFormValues(normalizedValues);
+      }
+      const missing = validateRequiredFields(
+        selectedTemplate,
+        normalizedValues,
+        mediaByField
+      );
+      if (missing.length) {
+        Alert.alert(
+          "Incomplete form",
+          `Please complete required fields: ${missing.slice(0, 5).join(", ")}${
+            missing.length > 5 ? "…" : ""
+          }`
+        );
+        goToStep(1);
+        return;
+      }
 
-    try {
+      if (hasInvoice && !invoiceDescription.trim()) {
+        Alert.alert("Invoice required", "Please enter an invoice description.");
+        return;
+      }
+
+      if (hasInvoice) {
+        const validItems = lineItems.filter(
+          (item) => item.name.trim() && item.quantity > 0 && item.rate > 0
+        );
+        if (validItems.length === 0) {
+          Alert.alert(
+            "Invoice items",
+            "Add at least one line item with name, quantity, and rate."
+          );
+          return;
+        }
+      }
+
       setIsSubmitting(true);
 
       // Validate if job can be completed BEFORE creating inspection report
@@ -576,9 +644,11 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
     } catch (error: any) {
       console.log(error, "Error...RentalEase");
       console.error("Job completion failed", error);
+      console.error("Error stack:", error?.stack);
+      console.error("Error details:", JSON.stringify(error, null, 2));
       Alert.alert(
         "Unable to complete job",
-        error?.message || "Please try again."
+        `${error?.message || "Please try again."}\n\nError: ${error?.name || "Unknown"}`
       );
     } finally {
       setIsSubmitting(false);
@@ -1401,6 +1471,8 @@ const validateRequiredFields = (
       if (!field.required) return;
       const label = getFieldLabel(field);
       const value = sectionValues[field.id];
+
+      console.log(`[validateRequiredFields] Checking field: ${label}, value:`, value, `type: ${field.type}`);
       if (field.type === "photo" || field.type === "photo-multi") {
         const attachments = media[field.id] || [];
         if (!attachments.length) {

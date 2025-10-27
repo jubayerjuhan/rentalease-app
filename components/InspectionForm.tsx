@@ -272,7 +272,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
             asset.fileName ||
             `${field.id}-${Date.now()}.${asset.mimeType?.split("/").pop() || "jpg"}`,
           type: asset.mimeType || "image/jpeg",
-          size: asset.fileSize,
+          size: asset.fileSize || 0,
         };
         console.log("[InspectionForm] Adding media:", media);
         onAddMedia(field.id, media);
@@ -317,7 +317,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
             asset.fileName ||
             `${field.id}-${Date.now()}.${asset.mimeType?.split("/").pop() || "jpg"}`,
           type: asset.mimeType || "image/jpeg",
-          size: asset.fileSize,
+          size: asset.fileSize || 0,
         };
         console.log("[InspectionForm] Adding media:", media);
         onAddMedia(field.id, media);
@@ -589,6 +589,42 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
             <Text style={[styles.booleanLabel, { color: theme.textSecondary }]}>
               {fieldValue ? "Yes" : "No"}
             </Text>
+          </View>
+        );
+      case "checkbox":
+        return (
+          <View style={styles.optionList}>
+            {[
+              { value: "yes", label: "Yes" },
+              { value: "no", label: "No" }
+            ].map((option) => {
+              const isSelected = fieldValue === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.optionChip,
+                    {
+                      borderColor: isSelected ? theme.primary : theme.border,
+                      backgroundColor: isSelected
+                        ? theme.primary
+                        : theme.card,
+                    },
+                  ]}
+                  onPress={() => editable && onChange(sectionId, field.id, option.value)}
+                  disabled={!editable}
+                >
+                  <Text
+                    style={{
+                      color: isSelected ? "#fff" : theme.text,
+                      fontWeight: isSelected ? "600" : "500",
+                    }}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         );
       case "select":
