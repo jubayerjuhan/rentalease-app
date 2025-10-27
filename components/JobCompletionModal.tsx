@@ -80,13 +80,13 @@ const getStepsForJobType = (jobType: string) => {
       { key: "template", label: "Select Template" },
       { key: "rooms", label: "Room Configuration" },
       { key: "form", label: "Inspection Form" },
-      { key: "invoice", label: "Invoice & Submit" },
+      { key: "invoice", label: "Review & Submit" },
     ] as const;
   }
   return [
     { key: "template", label: "Select Template" },
     { key: "form", label: "Inspection Form" },
-    { key: "invoice", label: "Invoice & Submit" },
+    { key: "invoice", label: "Review & Submit" },
   ] as const;
 };
 
@@ -1026,8 +1026,11 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
           </ScrollView>
         );
       case "invoice":
-      default:
-        const { subtotal, taxAmount, total } = calculateTotals();
+      default: {
+        const showInvoiceSection = false;
+        const { subtotal, taxAmount, total } = showInvoiceSection
+          ? calculateTotals()
+          : { subtotal: 0, taxAmount: 0, total: 0 };
         return (
           <ScrollView style={styles.stepScroll}>
             {inspectionReportId && (
@@ -1055,34 +1058,36 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
               </View>
             )}
 
-            <View
-              style={[
-                styles.toggleCard,
-                { backgroundColor: theme.card, borderColor: theme.border },
-              ]}
-            >
-              <View>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                  Attach Invoice
-                </Text>
-                <Text
-                  style={[
-                    styles.sectionDescription,
-                    { color: theme.textSecondary },
-                  ]}
-                >
-                  Generate an invoice for additional charges or materials.
-                </Text>
+            {showInvoiceSection && (
+              <View
+                style={[
+                  styles.toggleCard,
+                  { backgroundColor: theme.card, borderColor: theme.border },
+                ]}
+              >
+                <View>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                    Attach Invoice
+                  </Text>
+                  <Text
+                    style={[
+                      styles.sectionDescription,
+                      { color: theme.textSecondary },
+                    ]}
+                  >
+                    Generate an invoice for additional charges or materials.
+                  </Text>
+                </View>
+                <Switch
+                  value={hasInvoice}
+                  onValueChange={setHasInvoice}
+                  trackColor={{ false: theme.disabled, true: theme.primary }}
+                  thumbColor={hasInvoice ? theme.surface : theme.textSecondary}
+                />
               </View>
-              <Switch
-                value={hasInvoice}
-                onValueChange={setHasInvoice}
-                trackColor={{ false: theme.disabled, true: theme.primary }}
-                thumbColor={hasInvoice ? theme.surface : theme.textSecondary}
-              />
-            </View>
+            )}
 
-            {hasInvoice && (
+            {showInvoiceSection && hasInvoice && (
               <View
                 style={[
                   styles.invoiceContainer,
@@ -1324,8 +1329,32 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
                 </View>
               </View>
             )}
+
+            {!showInvoiceSection && (
+              <View
+                style={[
+                  styles.infoCard,
+                  { backgroundColor: theme.card, borderColor: theme.border },
+                ]}
+              >
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                  Review & submit
+                </Text>
+                <Text
+                  style={[
+                    styles.sectionDescription,
+                    { color: theme.textSecondary },
+                  ]}
+                >
+                  Double-check your inspection details and tap "Complete Job" to
+                  finalise this visit. Invoices can be managed later from the
+                  office when required.
+                </Text>
+              </View>
+            )}
           </ScrollView>
         );
+      }
     }
   };
 
