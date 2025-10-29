@@ -23,6 +23,7 @@ import type {
 import {
   fetchInspectionTemplates,
   fetchInspectionTemplate,
+  fetchJobInspectionTemplate,
   submitInspectionReport,
 } from "@services/jobs";
 
@@ -116,15 +117,15 @@ const initializeFormValues = (
           sectionValues[field.id] = (field as any).defaultValue;
         } else if (field.required && columns.length) {
           const emptyRow = columns.reduce<Record<string, any>>((row, column) => {
-            // Prefill table rows with test data
+            // Initialize with empty values, let user fill
             if (column.type === "select" && column.options?.length) {
               row[column.id] = column.options[0].value;
             } else if (column.type === "date") {
               row[column.id] = new Date().toISOString().split('T')[0];
             } else if (column.type === "number") {
-              row[column.id] = "1";
+              row[column.id] = "";
             } else {
-              row[column.id] = `Test ${column.label || column.id}`;
+              row[column.id] = "";
             }
             return row;
           }, {} as Record<string, any>);
@@ -133,36 +134,29 @@ const initializeFormValues = (
           sectionValues[field.id] = [];
         }
       } else if (field.type === "multi-select") {
-        // Prefill with first option if available
-        if (field.options?.length) {
-          sectionValues[field.id] = [field.options[0].value];
-        } else {
-          sectionValues[field.id] = [];
-        }
+        // Use defaultValue if available, otherwise empty array
+        sectionValues[field.id] = (field as any).defaultValue || [];
       } else if (field.type === "boolean") {
-        sectionValues[field.id] = true; // Default to true for testing
+        // Use defaultValue if available, otherwise false
+        sectionValues[field.id] = (field as any).defaultValue ?? false;
       } else if (field.type === "select") {
-        // Prefill with first option
-        if (field.options?.length) {
-          sectionValues[field.id] = field.options[0].value;
-        } else {
-          sectionValues[field.id] = "";
-        }
+        // Use defaultValue if available, otherwise empty string
+        sectionValues[field.id] = (field as any).defaultValue || "";
       } else if (field.type === "date") {
-        // Prefill with today's date
-        sectionValues[field.id] = new Date().toISOString().split('T')[0];
+        // Use defaultValue if available, otherwise today's date
+        sectionValues[field.id] = (field as any).defaultValue || new Date().toISOString().split('T')[0];
       } else if (field.type === "number") {
-        // Prefill with test number
-        sectionValues[field.id] = "123";
+        // Use defaultValue if available, otherwise empty string
+        sectionValues[field.id] = (field as any).defaultValue || "";
       } else if (field.type === "yes-no" || field.type === "yes-no-na" || field.type === "checkbox") {
-        // Prefill with "yes"
-        sectionValues[field.id] = "yes";
+        // Use defaultValue if available, otherwise empty string
+        sectionValues[field.id] = (field as any).defaultValue || "";
       } else if (field.type === "pass-fail") {
-        // Prefill with "pass"
-        sectionValues[field.id] = "pass";
+        // Use defaultValue if available, otherwise empty string
+        sectionValues[field.id] = (field as any).defaultValue || "";
       } else {
-        // Use defaultValue if available, otherwise use test text
-        sectionValues[field.id] = (field as any).defaultValue || `Test ${field.label || field.id}`;
+        // Use defaultValue if available, otherwise empty string
+        sectionValues[field.id] = (field as any).defaultValue || "";
       }
     });
     acc[section.id] = sectionValues;
@@ -329,6 +323,38 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       setTemplates([]);
       setSelectedTemplate(null);
       setFormValues({});
+
+      // Try to use job-specific template first if we have a valid jobId
+      const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(jobId || "");
+      if (jobId && isValidObjectId) {
+        try {
+          console.log("[JobCompletionModal] Loading job-specific template for jobId:", jobId);
+          const jobTemplateData = await fetchJobInspectionTemplate(jobId);
+
+          console.log("[JobCompletionModal] Job template data received:", {
+            templateTitle: jobTemplateData.template.title,
+            jobType: jobTemplateData.template.jobType,
+            technicianName: jobTemplateData.technician?.firstName + " " + jobTemplateData.technician?.lastName,
+            propertyAddress: jobTemplateData.property?.address
+          });
+
+          // Auto-select the template since it's job-specific
+          setSelectedTemplate(jobTemplateData.template);
+          setFormValues(initializeFormValues(jobTemplateData.template));
+          setTemplates([jobTemplateData.template]);
+
+          // Auto-advance to form step since template is already selected
+          const formStepIndex = steps.findIndex((step) => step.key === "form");
+          setCurrentStepIndex(formStepIndex);
+
+          return; // Skip the generic template loading
+        } catch (jobTemplateError: any) {
+          console.warn("[JobCompletionModal] Failed to load job-specific template, falling back to generic templates:", jobTemplateError.message);
+          // Fall back to generic template loading
+        }
+      }
+
+      // Fallback: Load generic templates
       const fetched = await fetchInspectionTemplates();
 
       // Debug: Log all available templates

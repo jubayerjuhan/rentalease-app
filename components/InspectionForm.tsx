@@ -14,6 +14,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from "../contexts/ThemeContext";
+import SignatureModal from "./SignatureModal";
 import type {
   InspectionTemplate,
   InspectionField,
@@ -195,6 +196,12 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
   editable = true,
 }) => {
   const { theme } = useTheme();
+  const [signatureModalVisible, setSignatureModalVisible] = useState(false);
+  const [currentSignatureField, setCurrentSignatureField] = useState<{
+    sectionId: string;
+    fieldId: string;
+    label: string;
+  } | null>(null);
 
   const handlePickImage = async (
     field: InspectionField,
@@ -343,6 +350,33 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
       ? current.filter((val: string) => val !== optionValue)
       : [...current, optionValue];
     onChange(sectionId, field.id, nextValue);
+  };
+
+  const handleSignatureRequest = (sectionId: string, field: InspectionField) => {
+    if (!editable) return;
+
+    setCurrentSignatureField({
+      sectionId,
+      fieldId: field.id,
+      label: resolveFieldLabel(field),
+    });
+    setSignatureModalVisible(true);
+  };
+
+  const handleSignatureSave = (signatureData: string) => {
+    if (currentSignatureField) {
+      onChange(
+        currentSignatureField.sectionId,
+        currentSignatureField.fieldId,
+        signatureData
+      );
+      setCurrentSignatureField(null);
+    }
+  };
+
+  const handleSignatureModalClose = () => {
+    setSignatureModalVisible(false);
+    setCurrentSignatureField(null);
   };
 
   const renderTableField = (sectionId: string, field: InspectionField) => {
@@ -831,17 +865,21 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
                   <Text style={[styles.signatureText, { color: theme.success || "#10B981" }]}>
                     Signature Captured
                   </Text>
+                  {editable && (
+                    <TouchableOpacity
+                      style={styles.retakeButton}
+                      onPress={() => handleSignatureRequest(sectionId, field)}
+                    >
+                      <Text style={[styles.retakeButtonText, { color: theme.primary }]}>
+                        Retake
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               ) : (
                 <TouchableOpacity
                   style={styles.signatureButton}
-                  onPress={() => {
-                    if (editable) {
-                      // In a real app, you'd open a signature capture modal
-                      // For now, just set a placeholder signature
-                      onChange(sectionId, field.id, `signature_${Date.now()}`);
-                    }
-                  }}
+                  onPress={() => handleSignatureRequest(sectionId, field)}
                   disabled={!editable}
                 >
                   <MaterialCommunityIcons
@@ -967,6 +1005,13 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
           editable={editable}
         />
       </View>
+
+      <SignatureModal
+        visible={signatureModalVisible}
+        onClose={handleSignatureModalClose}
+        onSave={handleSignatureSave}
+        title={currentSignatureField?.label || 'Signature'}
+      />
     </View>
   );
 };
@@ -1139,6 +1184,17 @@ const styles = StyleSheet.create({
   signatureButtonText: {
     marginTop: 8,
     fontSize: 14,
+    fontWeight: "500",
+  },
+  retakeButton: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: "transparent",
+  },
+  retakeButtonText: {
+    fontSize: 12,
     fontWeight: "500",
   },
   tableContainer: {

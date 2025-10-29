@@ -293,6 +293,38 @@ export const fetchInspectionTemplate = async (
   return json.data as InspectionTemplate;
 };
 
+// NEW: Fetch job-specific template with prefilled data
+export const fetchJobInspectionTemplate = async (
+  jobId: string
+): Promise<{
+  template: InspectionTemplate;
+  job: any;
+  property: any;
+  technician: any;
+}> => {
+  const baseUrl = getBaseUrl();
+  const token = await getToken();
+
+  if (!token) {
+    throw new Error("No authentication token found");
+  }
+
+  const res = await fetch(`${baseUrl}/api/v1/inspections/jobs/${jobId}/template`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json?.message || "Failed to load job template");
+  }
+
+  return json.data;
+};
+
 export const submitInspectionReport = async (
   jobId: string,
   payload: InspectionSubmissionPayload
