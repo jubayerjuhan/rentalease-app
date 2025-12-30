@@ -10,5 +10,6 @@
       "@theme": ["theme"],
       "@theme/*": ["theme/*"]
     }
-  }
+  },
+  "exclude": ["src", "logs", "rentalease_website", "RentalEase-CRM*", "dist"]
 }

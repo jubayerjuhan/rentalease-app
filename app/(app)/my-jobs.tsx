@@ -46,12 +46,11 @@ export default function ActiveJobsPage() {
 
         let filteredJobs = data.jobs || [];
 
-        // Client-side filtering for Overdue - use backend's isOverdue flag OR status
+        // Client-side filtering for Overdue - use backend's isOverdue flag
         if (status === "Overdue") {
-          filteredJobs = filteredJobs.filter(job => {
-            return (job.isOverdue === true && (job.status === "Scheduled" || job.status === "In Progress")) ||
-                   job.status === "Overdue";
-          });
+          filteredJobs = filteredJobs.filter(job => 
+            job.isOverdue === true && (job.status === "Scheduled" || job.status === "In Progress")
+          );
         }
 
         // Sort jobs by due date in ascending order
@@ -133,8 +132,7 @@ export default function ActiveJobsPage() {
       Alert.alert(
         "Success", 
         "Job completed successfully!" + 
-        (completionData.hasInvoice ? " Invoice has been created." : "") +
-        (completionData.reportFile ? " Report has been uploaded." : ""),
+        (completionData.hasInvoice ? " Invoice has been created." : ""),
         [{ text: "OK" }]
       );
       
@@ -216,7 +214,7 @@ export default function ActiveJobsPage() {
       // Check if job can be completed (due date is today or past, or if job is overdue)
       const canCompleteJob = () => {
         // If job is marked as overdue, it can always be completed regardless of due date
-        if (item.isOverdue === true || item.status === "Overdue") {
+        if (item.isOverdue === true) {
           return true;
         }
 
@@ -400,7 +398,7 @@ export default function ActiveJobsPage() {
 
           <View style={styles.jobActions}>
             {((item.status === "Scheduled" || item.status === "In Progress") && canCompleteJob()) ||
-              (item.isOverdue === true || item.status === "Overdue") ? (
+              item.isOverdue === true ? (
                 <TouchableOpacity
                   style={[
                     styles.completeButton,

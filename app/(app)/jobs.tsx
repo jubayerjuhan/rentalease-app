@@ -24,7 +24,7 @@ const getPriorityColor = (priority: string, isDue = false) => {
   if (isDue) {
     return "#FEE2E2"; // Light red for due jobs
   }
-  const colors = {
+  const colors: Record<string, string> = {
     Low: "#D1FAE5",
     Medium: "#FEF3C7",
     High: "#FED7AA",
@@ -42,7 +42,7 @@ const isJobDue = (dueDate: string) => {
 };
 
 const getJobTypeIcon = (jobType: string) => {
-  const icons = {
+  const icons: Record<string, string> = {
     Smoke: "smoke-detector",
     Gas: "gas-cylinder",
     Electrical: "lightning-bolt",
@@ -390,7 +390,7 @@ export default function JobsPage() {
         </Text>
         <View style={styles.jobTypeContainer}>
           <MaterialCommunityIcons
-            name={getJobTypeIcon(item.jobType)}
+            name={getJobTypeIcon(item.jobType) as any}
             size={16}
             color={item.status === "Completed" ? "#10B981" : theme.primary}
           />

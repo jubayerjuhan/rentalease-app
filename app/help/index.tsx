@@ -107,7 +107,7 @@ export default function HelpScreen() {
               >
                 <View style={[styles.helpOptionIcon, { backgroundColor: `${option.color}15` }]}>
                   <MaterialCommunityIcons
-                    name={option.icon}
+                    name={option.icon as any}
                     size={32}
                     color={option.color}
                   />
@@ -133,7 +133,7 @@ export default function HelpScreen() {
                 onPress={() => router.push('/help/user-guide')}
               >
                 <MaterialCommunityIcons
-                  name={item.icon}
+                  name={item.icon as any}
                   size={24}
                   color={theme.primary}
                 />

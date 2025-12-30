@@ -63,7 +63,7 @@ class CalendarDeviceService {
         throw new Error('No default calendar available');
       }
 
-      const newCalendar: Calendar.CalendarCreateDetails = {
+      const newCalendar: any = {
         title: CALENDAR_NAME,
         color: '#2196F3',
         entityType: Calendar.EntityTypes.EVENT,
@@ -156,7 +156,7 @@ class CalendarDeviceService {
         ? `${job.location.street}, ${job.location.city}, ${job.location.state} ${job.location.zipCode}`
         : '';
 
-      const eventDetails: Calendar.EventRecurrence = {
+      const eventDetails: any = {
         title: job.title,
         startDate: new Date(job.startTime),
         endDate: new Date(job.endTime),

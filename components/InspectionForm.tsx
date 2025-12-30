@@ -1141,6 +1141,9 @@ const styles = StyleSheet.create({
   fieldBlock: {
     marginBottom: 20,
   },
+  fieldContainer: {
+    marginBottom: 12,
+  },
   fieldLabelRow: {
     flexDirection: "row",
     justifyContent: "space-between",

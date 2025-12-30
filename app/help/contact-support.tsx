@@ -131,7 +131,7 @@ export default function ContactSupportScreen() {
               >
                 <View style={[styles.contactIcon, { backgroundColor: `${method.color}15` }]}>
                   <MaterialCommunityIcons
-                    name={method.icon}
+                    name={method.icon as any}
                     size={28}
                     color={method.color}
                   />

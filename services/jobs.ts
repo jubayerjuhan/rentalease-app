@@ -123,6 +123,8 @@ export type InspectionFieldType =
   | "yes-no"
   | "yes-no-na"
   | "pass-fail"
+  | "pass-fail-na"
+  | "radio"
   | "checkbox"
   | "checkbox-group"
   | "table";
@@ -276,7 +278,7 @@ export const fetchJobInspectionTemplate = async (
   property: any;
   technician: any;
 }> => {
-  const baseUrl = getBaseUrl();
+  const baseUrl = BASE_URL;
   const token = await getToken();
 
   if (!token) {

@@ -110,18 +110,19 @@ const SignatureModal: React.FC<SignatureModalProps> = ({
             onBegin={handleBegin}
             descriptionText=""
             clearText="Clear"
-            confirmText="Save"
-            webStyle={style}
-            autoClear={false}
-            backgroundColor={theme.surface || theme.card || '#ffffff'}
-            penColor={theme.text || '#000000'}
-            minWidth={2}
-            maxWidth={4}
-            canvasProps={{
-              width: screenWidth - 40,
-              height: 300,
-            }}
-          />
+          confirmText="Save"
+          webStyle={style}
+          autoClear={false}
+          backgroundColor={theme.surface || theme.card || '#ffffff'}
+          penColor={theme.text || '#000000'}
+          minWidth={2}
+          maxWidth={4}
+          // @ts-expect-error canvasProps is not typed in signature-canvas
+          canvasProps={{
+            width: screenWidth - 40,
+            height: 300,
+          }}
+        />
         </View>
 
         <View style={styles.buttonContainer}>

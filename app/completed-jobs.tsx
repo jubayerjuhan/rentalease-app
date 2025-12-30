@@ -17,7 +17,7 @@ import { useTheme } from "../contexts/ThemeContext";
 
 // Helper Functions
 const getPriorityColor = (priority: string) => {
-  const colors = {
+  const colors: Record<string, string> = {
     Low: "#D1FAE5",
     Medium: "#FEF3C7",
     High: "#FED7AA",
@@ -27,7 +27,7 @@ const getPriorityColor = (priority: string) => {
 };
 
 const getJobTypeIcon = (jobType: string) => {
-  const icons = {
+  const icons: Record<string, string> = {
     Smoke: "smoke-detector",
     Gas: "gas-cylinder",
     Electrical: "lightning-bolt",
@@ -182,7 +182,7 @@ export default function CompletedJobsPage() {
           </Text>
           <View style={styles.jobTypeContainer}>
             <MaterialCommunityIcons
-              name={getJobTypeIcon(item.jobType)}
+              name={getJobTypeIcon(item.jobType) as any}
               size={16}
               color={theme.success}
             />

@@ -178,7 +178,7 @@ export default function MorePage() {
         {settingsItems.map((item, index) => (
           <View key={index} style={styles.menuItem}>
             <View style={styles.menuItemLeft}>
-              <MaterialCommunityIcons name={item.icon} size={24} color={theme.textSecondary} />
+              <MaterialCommunityIcons name={item.icon as any} size={24} color={theme.textSecondary} />
               <Text style={styles.menuItemText}>{item.title}</Text>
             </View>
             <Switch
@@ -197,7 +197,7 @@ export default function MorePage() {
         {menuItems.map((item, index) => (
           <TouchableOpacity key={index} style={styles.menuItem} onPress={item.onPress}>
             <View style={styles.menuItemLeft}>
-              <MaterialCommunityIcons name={item.icon} size={24} color={theme.textSecondary} />
+              <MaterialCommunityIcons name={item.icon as any} size={24} color={theme.textSecondary} />
               <Text style={styles.menuItemText}>{item.title}</Text>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={20} color={theme.textTertiary} />

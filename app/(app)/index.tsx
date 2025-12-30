@@ -14,6 +14,7 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { PieChart, BarChart } from "react-native-chart-kit";
 import { fetchDashboardData, DashboardData } from "@services/dashboard";
+import { Job } from "@services/jobs";
 import { getProfile, TechnicianProfile } from "@services/profile";
 import { useTheme, Theme } from "../../contexts/ThemeContext";
 
@@ -166,6 +167,7 @@ export default function HomePage() {
           value={dashboardData.quickStats.totalJobs}
           icon="briefcase"
           color={theme.primary}
+          screenWidth={screenWidth}
           theme={theme}
           isDark={isDark}
         />
@@ -174,6 +176,7 @@ export default function HomePage() {
           value={dashboardData.quickStats.activeJobs}
           icon="clock-outline"
           color={theme.success}
+          screenWidth={screenWidth}
           theme={theme}
           isDark={isDark}
         />
@@ -182,6 +185,7 @@ export default function HomePage() {
           value={dashboardData.quickStats.completedJobs}
           icon="check-circle"
           color={theme.success}
+          screenWidth={screenWidth}
           theme={theme}
           isDark={isDark}
         />
@@ -190,6 +194,7 @@ export default function HomePage() {
           value={dashboardData.quickStats.overdueJobs}
           icon="alert-circle"
           color={theme.error}
+          screenWidth={screenWidth}
           theme={theme}
           isDark={isDark}
         />
@@ -358,6 +363,7 @@ const StatCard = ({
   icon,
   color,
   theme,
+  screenWidth,
   isDark,
 }: {
   title: string;
@@ -365,9 +371,10 @@ const StatCard = ({
   icon: string;
   color: string;
   theme: Theme;
+  screenWidth: number;
   isDark: boolean;
 }) => {
-  const styles = createStyles(theme, isDark);
+  const styles = createStyles(theme, isDark, screenWidth);
   return (
     <View style={styles.statCard}>
       <MaterialCommunityIcons name={icon as any} size={24} color={color} />
@@ -378,7 +385,7 @@ const StatCard = ({
 };
 
 // Helper Functions
-const getPropertyAddress = (job: RecentJob) => {
+const getPropertyAddress = (job: Job) => {
   // Handle different property data structures
   if (typeof job.property === "string") {
     return job.property;

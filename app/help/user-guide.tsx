@@ -210,7 +210,7 @@ export default function UserGuideScreen() {
               onPress={() => setActiveSection(section.id)}
             >
               <MaterialCommunityIcons
-                name={section.icon}
+                name={section.icon as any}
                 size={20}
                 color={activeSection === section.id ? section.color : theme.textSecondary}
               />
@@ -231,7 +231,7 @@ export default function UserGuideScreen() {
               <View style={styles.guideHeader}>
                 <View style={[styles.iconContainer, { backgroundColor: `${activeGuide.color}15` }]}>
                   <MaterialCommunityIcons
-                    name={activeGuide.icon}
+                    name={activeGuide.icon as any}
                     size={32}
                     color={activeGuide.color}
                   />
