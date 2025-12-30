@@ -48,7 +48,6 @@ const getJobTypeIcon = (jobType: string) => {
     Electrical: "lightning-bolt",
     Plumbing: "pipe-wrench",
     HVAC: "air-conditioner",
-    "Pool Safety": "pool",
     "Routine Inspection": "clipboard-check",
     Repairs: "tools",
   };

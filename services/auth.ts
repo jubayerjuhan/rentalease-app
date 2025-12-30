@@ -1,33 +1,5 @@
-import { Platform } from "react-native";
 import { deleteToken } from "./secureStore";
-
-const RAW_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined;
-
-function getBaseUrl(): string {
-  if (!RAW_BASE_URL) {
-    throw new Error(
-      "Missing EXPO_PUBLIC_API_BASE_URL. Set it in .env (e.g., http://localhost:4000) and restart the dev server."
-    );
-  }
-  try {
-    const url = new URL(RAW_BASE_URL);
-    console.log(url.hostname, "URL Hostname...");
-    // Normalize localhost for simulators/emulators
-    if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
-      if (Platform.OS === "android") {
-        // Android emulator maps host machine to 10.0.2.2
-        url.hostname = "10.0.2.2";
-      } else {
-        // iOS simulator works with 127.0.0.1
-        url.hostname = "127.0.0.1";
-      }
-    }
-    // Remove trailing slash
-    return url.toString().replace(/\/$/, "");
-  } catch {
-    return RAW_BASE_URL;
-  }
-}
+import { BASE_URL } from "../config/api";
 
 export type Technician = {
   id: string;
@@ -45,7 +17,7 @@ export async function technicianLogin(
   email: string,
   password: string
 ): Promise<{ technician: Technician; token: string }> {
-  const baseUrl = getBaseUrl();
+  const baseUrl = BASE_URL;
   const payload = { email, password };
   console.log("[technicianLogin] base", baseUrl);
   console.log("[technicianLogin] payload", payload);
@@ -72,7 +44,7 @@ export async function technicianLogin(
 }
 
 export async function technicianForgotPassword(email: string): Promise<string> {
-  const baseUrl = getBaseUrl();
+  const baseUrl = BASE_URL;
   try {
     const res = await fetch(
       `${baseUrl}/api/v1/technician/auth/forgot-password`,
@@ -100,7 +72,7 @@ export async function technicianResetPassword(
   otp: string,
   newPassword: string
 ): Promise<string> {
-  const baseUrl = getBaseUrl();
+  const baseUrl = BASE_URL;
   try {
     const res = await fetch(
       `${baseUrl}/api/v1/technician/auth/reset-password`,

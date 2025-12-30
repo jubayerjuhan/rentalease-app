@@ -1,0 +1,9 @@
+{
+  "providers": [
+    {
+      "name": "twilioDocs",
+      "type": "http",
+      "baseUrl": "https://www.twilio.com/docs/voice/api/call-resource"
+    }
+  ]
+}

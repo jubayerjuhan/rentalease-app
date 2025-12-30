@@ -1,0 +1,212 @@
+# Cursor Ignore File
+# Files and directories to exclude from Cursor's indexing and AI context
+
+# Dependencies
+**/node_modules/
+**/pnpm-lock.yaml
+**/package-lock.json
+**/yarn.lock
+
+# Build outputs
+**/dist/
+**/build/
+**/.next/
+**/.nuxt/
+**/.output/
+**/.vite/
+**/out/
+
+# Environment and configuration
+**/.env
+**/.env.*
+!**/.env.example
+**/.DS_Store
+**/Thumbs.db
+
+# IDE and editor files
+**/.vscode/
+**/.idea/
+**/*.swp
+**/*.swo
+**/*~
+
+# Logs
+**/logs/
+**/*.log
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
+**/lerna-debug.log*
+
+# Runtime data
+**/pids/
+**/*.pid
+**/*.seed
+**/*.pid.lock
+
+# Coverage directory used by tools like istanbul
+**/coverage/
+**/.nyc_output/
+
+# Compiled binary addons
+**/build/Release/
+
+# Dependency directories
+**/jspm_packages/
+
+# TypeScript cache
+**/*.tsbuildinfo
+
+# Optional npm cache directory
+**/.npm
+
+# Optional eslint cache
+**/.eslintcache
+
+# Microbundle cache
+**/.rpt2_cache/
+**/.rts2_cache_cjs/
+**/.rts2_cache_es/
+**/.rts2_cache_umd/
+
+# Optional REPL history
+**/.node_repl_history
+
+# Output of 'npm pack'
+**/*.tgz
+
+# Yarn Integrity file
+**/.yarn-integrity
+
+# dotenv environment variables file
+**/.env.test
+**/.env.production
+
+# parcel-bundler cache
+**/.cache
+**/.parcel-cache
+
+# Next.js build output
+**/.next
+
+# Nuxt.js build / generate output
+**/.nuxt
+**/dist
+
+# Gatsby files
+**/.cache/
+**/public
+
+# Storybook build outputs
+**/storybook-static
+
+# Temporary folders
+**/tmp/
+**/temp/
+
+# Database files
+**/*.sqlite
+**/*.db
+
+# Large media files
+**/*.mp4
+**/*.avi
+**/*.mov
+**/*.wmv
+**/*.flv
+**/*.webm
+**/*.mkv
+**/*.m4v
+**/*.3gp
+
+# Large images (over reasonable size)
+**/*.psd
+**/*.ai
+**/*.sketch
+
+# Archives
+**/*.zip
+**/*.tar
+**/*.tar.gz
+**/*.rar
+**/*.7z
+
+# OS generated files
+**/.DS_Store
+**/.DS_Store?
+**/._*
+**/.Spotlight-V100
+**/.Trashes
+**/ehthumbs.db
+**/Thumbs.db
+
+# Project specific ignores
+**/uploads/
+**/public/uploads/
+**/storage/
+
+# Test coverage reports
+**/coverage/
+**/.coverage/
+**/lcov.info
+
+# Cypress
+**/cypress/videos/
+**/cypress/screenshots/
+
+# Generated documentation
+**/docs/build/
+**/documentation/build/
+
+# Temporary files
+**/*.tmp
+**/*.temp
+**/.temporary
+
+# Lock files for different package managers
+**/pnpm-lock.yaml
+**/yarn.lock
+**/package-lock.json
+
+# Browser downloads
+**/Downloads/
+
+# Generated types
+**/*.d.ts.map
+
+# SCSS/CSS generated files
+**/*.css.map
+
+# Source maps
+**/*.map
+
+# Webpack stats
+**/webpack-stats.json
+**/stats.json
+
+# Bundle analyzer reports
+**/bundle-analyzer-report.html
+
+# Storybook
+**/.storybook/public/
+**/storybook-static/
+
+# Jest
+**/jest-coverage/
+
+# Prettier
+**/.prettierignore
+
+# ESLint
+**/.eslintignore
+
+# Stylelint
+**/.stylelintignore
+
+# Husky
+**/.husky/_/
+
+# Git
+**/.git/
+**/.gitignore

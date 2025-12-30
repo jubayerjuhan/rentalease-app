@@ -1,31 +1,5 @@
-import { Platform } from "react-native";
 import { getToken } from "./secureStore";
-
-const RAW_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined;
-
-function getBaseUrl(): string {
-  console.log(RAW_BASE_URL, "Base URL");
-  if (!RAW_BASE_URL) {
-    throw new Error(
-      "Missing EXPO_PUBLIC_API_BASE_URL. Set it in .env (e.g., http://localhost:4000) and restart the dev server."
-    );
-  }
-  try {
-    const url = new URL(RAW_BASE_URL);
-    // Normalize localhost for simulators/emulators
-    if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
-      if (Platform.OS === "android") {
-        url.hostname = "10.0.2.2";
-      } else {
-        url.hostname = "127.0.0.1";
-      }
-    }
-    // Remove trailing slash
-    return url.toString().replace(/\/$/, "");
-  } catch {
-    return RAW_BASE_URL;
-  }
-}
+import { BASE_URL } from "../config/api";
 
 export type Job = {
   id: string;
@@ -239,7 +213,7 @@ export type InspectionReportSummary = {
 export const fetchInspectionTemplates = async (): Promise<
   InspectionTemplate[]
 > => {
-  const baseUrl = getBaseUrl();
+  const baseUrl = BASE_URL;
   const token = await getToken();
 
   const res = await fetch(`${baseUrl}/api/v1/inspections/templates`, {
@@ -262,7 +236,7 @@ export const fetchInspectionTemplate = async (
   jobType: string,
   options?: { bedroomCount?: number; bathroomCount?: number }
 ): Promise<InspectionTemplate> => {
-  const baseUrl = getBaseUrl();
+  const baseUrl = BASE_URL;
   const token = await getToken();
 
   // Build query parameters for dynamic templates
@@ -332,7 +306,7 @@ export const submitInspectionReport = async (
   report: InspectionReportSummary;
   pdf?: { url?: string };
 }> => {
-  const baseUrl = getBaseUrl();
+  const baseUrl = BASE_URL;
   const token = await getToken();
 
   if (!token) {
@@ -414,7 +388,7 @@ export const submitInspectionReport = async (
 export async function fetchAvailableJobs(
   filters: JobFilters = {}
 ): Promise<JobsResponse> {
-  const baseUrl = getBaseUrl();
+  const baseUrl = BASE_URL;
   const token = await getToken();
 
   if (!token) {
@@ -487,7 +461,7 @@ export async function fetchAvailableJobs(
 export async function fetchTechnicianJobs(
   filters: JobFilters = {}
 ): Promise<JobsResponse> {
-  const baseUrl = getBaseUrl();
+  const baseUrl = BASE_URL;
   const token = await getToken();
 
   if (!token) {
@@ -555,7 +529,7 @@ export async function fetchTechnicianJobs(
 
 // Claim a job
 export async function claimJob(jobId: string): Promise<{ message: string }> {
-  const baseUrl = getBaseUrl();
+  const baseUrl = BASE_URL;
   const token = await getToken();
 
   if (!token) {
@@ -590,7 +564,7 @@ export async function claimJob(jobId: string): Promise<{ message: string }> {
 
 // Get job details
 export async function fetchJobDetails(jobId: string): Promise<Job> {
-  const baseUrl = getBaseUrl();
+  const baseUrl = BASE_URL;
   const token = await getToken();
 
   if (!token) {
@@ -653,7 +627,7 @@ export async function completeJob(
     };
   }
 ): Promise<{ message: string; job: Job }> {
-  const baseUrl = getBaseUrl();
+  const baseUrl = BASE_URL;
   const token = await getToken();
 
   if (!token) {

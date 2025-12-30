@@ -525,7 +525,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
         ) : null}
 
         {rows.map((row, rowIndex) => (
-          <View key={`row-${rowIndex}`} style={[styles.tableRow, { borderColor: theme.border }]}>
+          <View key={`row-${rowIndex}`} style={[styles.tableRow, { borderColor: theme.border }]}> 
             <View style={styles.tableRowHeader}>
               <Text style={[styles.tableRowTitle, { color: theme.text }]}>
                 {`${resolveFieldLabel(field)} #${rowIndex + 1}`}
@@ -640,9 +640,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
                     styles.optionChip,
                     {
                       borderColor: isSelected ? theme.primary : theme.border,
-                      backgroundColor: isSelected
-                        ? theme.primary
-                        : theme.card,
+                      backgroundColor: isSelected ? theme.primary : theme.card,
                     },
                   ]}
                   onPress={() => editable && onChange(sectionId, field.id, option.value)}
@@ -947,6 +945,105 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
           </View>
         );
       }
+      case "checkbox": {
+        const booleanValue = fieldValue === true || fieldValue === "true";
+        return (
+          <View style={styles.fieldContainer}>
+            <TouchableOpacity
+              style={[
+                styles.checkboxRow,
+                !editable && styles.disabled
+              ]}
+              onPress={() => editable && onChange(sectionId, field.id, !booleanValue)}
+              disabled={!editable}
+            >
+              <View style={[
+                styles.checkboxContainer,
+                { borderColor: theme.border },
+                booleanValue && { backgroundColor: theme.primary, borderColor: theme.primary }
+              ]}>
+                {booleanValue && (
+                  <MaterialCommunityIcons
+                    name="check"
+                    size={16}
+                    color="white"
+                  />
+                )}
+              </View>
+              <Text style={[
+                styles.checkboxLabel,
+                { color: theme.text },
+                !editable && { color: theme.textSecondary }
+              ]}>
+                {field.label}
+                {field.required && <Text style={{ color: theme.error }}> *</Text>}
+              </Text>
+            </TouchableOpacity>
+            {field.helpText && (
+              <Text style={[styles.helpText, { color: theme.textSecondary }]}>
+                {field.helpText}
+              </Text>
+            )}
+          </View>
+        );
+      }
+      case "checkbox-group": {
+        const groupValue = Array.isArray(fieldValue) ? fieldValue : [];
+        return (
+          <View style={styles.fieldContainer}>
+            <Text style={[styles.fieldLabel, { color: theme.text }]}>
+              {field.label}
+              {field.required && <Text style={{ color: theme.error }}> *</Text>}
+            </Text>
+            {field.options?.map((option) => {
+              const isSelected = groupValue.includes(option.value);
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.checkboxRow,
+                    !editable && styles.disabled
+                  ]}
+                  onPress={() => {
+                    if (!editable) return;
+                    const newValue = isSelected
+                      ? groupValue.filter(v => v !== option.value)
+                      : [...groupValue, option.value];
+                    onChange(sectionId, field.id, newValue);
+                  }}
+                  disabled={!editable}
+                >
+                  <View style={[
+                    styles.checkboxContainer,
+                    { borderColor: theme.border },
+                    isSelected && { backgroundColor: theme.primary, borderColor: theme.primary }
+                  ]}>
+                    {isSelected && (
+                      <MaterialCommunityIcons
+                        name="check"
+                        size={16}
+                        color="white"
+                      />
+                    )}
+                  </View>
+                  <Text style={[
+                    styles.checkboxLabel,
+                    { color: theme.text },
+                    !editable && { color: theme.textSecondary }
+                  ]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            {field.helpText && (
+              <Text style={[styles.helpText, { color: theme.textSecondary }]}>
+                {field.helpText}
+              </Text>
+            )}
+          </View>
+        );
+      }
       default:
         return (
           <Text style={[styles.unsupported, { color: theme.textSecondary }]}>
@@ -989,17 +1086,19 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
         </View>
       ))}
 
-      <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <View
+        style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+      >
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Additional Notes</Text>
         <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
           Add any additional observations or notes about the inspection.
         </Text>
         <TextInput
           style={[styles.textInput, styles.notesInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surface || theme.card }]}
-          value={notes}
-          onChangeText={onNotesChange}
           placeholder="Enter any additional notes..."
           placeholderTextColor={theme.placeholder}
+          value={notes}
+          onChangeText={onNotesChange}
           multiline
           numberOfLines={4}
           editable={editable}
@@ -1015,8 +1114,6 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
     </View>
   );
 };
-
-export default InspectionForm;
 
 const styles = StyleSheet.create({
   sectionCard: {
@@ -1054,12 +1151,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#374151",
-  },
-  helpText: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginBottom: 8,
-    lineHeight: 16,
   },
   textInput: {
     borderWidth: 1,
@@ -1102,6 +1193,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   mediaThumb: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
     position: "relative",
   },
   mediaImage: {
@@ -1124,39 +1218,39 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  datePickerButton: {
+  helpText: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginBottom: 8,
+    lineHeight: 16,
+  },
+  checkboxRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 8,
+    paddingVertical: 8,
+  },
+  checkboxContainer: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderRadius: 4,
+    marginRight: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    flex: 1,
+  },
+  disabled: {
+    opacity: 0.6,
+  },
+  unsupported: {
+    fontSize: 14,
+    fontStyle: "italic",
     padding: 12,
-  },
-  datePickerText: {
-    fontSize: 16,
-    color: "#1F2937",
-  },
-  iosPickerContainer: {
+    backgroundColor: "#F3F4F6",
     borderRadius: 8,
-    marginTop: 8,
-    overflow: "hidden",
-  },
-  iosPickerHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-  },
-  iosPickerButton: {
-    paddingVertical: 4,
-  },
-  iosPickerButtonText: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  iosDatePicker: {
   },
   signatureContainer: {
     marginTop: 8,
@@ -1268,11 +1362,41 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
-  unsupported: {
-    fontSize: 14,
-    fontStyle: "italic",
-    padding: 12,
-    backgroundColor: "#F3F4F6",
+  datePickerButton: {
+    borderWidth: 1,
     borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
+  datePickerText: {
+    fontSize: 16,
+    color: "#1F2937",
+  },
+  iosPickerContainer: {
+    borderRadius: 8,
+    marginTop: 8,
+    overflow: "hidden",
+  },
+  iosPickerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  iosPickerButton: {
+    paddingVertical: 4,
+  },
+  iosPickerButtonText: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  iosDatePicker: {},
 });
+
+export default InspectionForm;

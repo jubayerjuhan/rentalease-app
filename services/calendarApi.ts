@@ -1,28 +1,5 @@
-import { Platform } from "react-native";
+import { BASE_URL } from "../config/api";
 import { getToken } from "./secureStore";
-
-const RAW_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined;
-
-function getBaseUrl(): string {
-  if (!RAW_BASE_URL) {
-    throw new Error(
-      "Missing EXPO_PUBLIC_API_BASE_URL. Set it in .env (e.g., http://localhost:4000) and restart the dev server."
-    );
-  }
-  try {
-    const url = new URL(RAW_BASE_URL);
-    if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
-      if (Platform.OS === "android") {
-        url.hostname = "10.0.2.2";
-      } else {
-        url.hostname = "127.0.0.1";
-      }
-    }
-    return url.toString().replace(/\/$/, "");
-  } catch {
-    return RAW_BASE_URL;
-  }
-}
 
 export interface CalendarEvent {
   id: string;
@@ -101,7 +78,7 @@ class CalendarApiService {
     status?: string
   ): Promise<CalendarEvent[]> {
     try {
-      const baseUrl = getBaseUrl();
+      const baseUrl = BASE_URL;
       const headers = await this.getAuthHeaders();
       
       let url = `${baseUrl}/api/v1/calendar/my-calendar?format=json`;
@@ -175,7 +152,7 @@ class CalendarApiService {
     shift: string
   ): Promise<any> {
     try {
-      const baseUrl = getBaseUrl();
+      const baseUrl = BASE_URL;
       const headers = await this.getAuthHeaders();
       
       const payload = {
@@ -209,7 +186,7 @@ class CalendarApiService {
 
   async getCalendarFeedUrl(): Promise<CalendarFeedResponse['data']> {
     try {
-      const baseUrl = getBaseUrl();
+      const baseUrl = BASE_URL;
       const headers = await this.getAuthHeaders();
       
       const response = await fetch(`${baseUrl}/api/v1/calendar/my-calendar/feed-url`, {
@@ -234,7 +211,7 @@ class CalendarApiService {
 
   async downloadCalendarICS(): Promise<string> {
     try {
-      const baseUrl = getBaseUrl();
+      const baseUrl = BASE_URL;
       const headers = await this.getAuthHeaders();
       
       const response = await fetch(`${baseUrl}/api/v1/calendar/my-calendar/download`, {

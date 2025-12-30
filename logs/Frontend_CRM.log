@@ -1,0 +1,22 @@
+
+> rentalease-client@0.0.0 dev /Users/juhan/Developer/The_Digital_Dude/rentalease_crm/RentalEase-CRM
+> vite --host
+
+
+  VITE v7.0.0  ready in 131 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.0.101:5173/
+DEPRECATION WARNING [import]: Sass @import rules are deprecated and will be removed in Dart Sass 3.0.0.
+
+More info and automated migrator: https://sass-lang.com/d/import
+
+  ╷
+2 │ @import "../../pages/Login/Login.scss";
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  ╵
+    src/components/LoginForm/LoginForm.scss 2:9  root stylesheet
+
+10:40:52 PM [vite] (client) hmr update /src/pages/Technician/Technician.tsx
+10:40:58 PM [vite] (client) hmr update /src/pages/Technician/Technician.tsx
+ ELIFECYCLE  Command failed with exit code 143.

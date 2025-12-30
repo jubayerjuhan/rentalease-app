@@ -1,30 +1,5 @@
-import { Platform } from "react-native";
+import { BASE_URL } from "../config/api";
 import { getToken } from "./secureStore";
-
-const RAW_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined;
-
-function getBaseUrl(): string {
-  if (!RAW_BASE_URL) {
-    throw new Error(
-      "Missing EXPO_PUBLIC_API_BASE_URL. Set it in .env (e.g., http://localhost:4000) and restart the dev server."
-    );
-  }
-  try {
-    const url = new URL(RAW_BASE_URL);
-    // Normalize localhost for simulators/emulators
-    if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
-      if (Platform.OS === "android") {
-        url.hostname = "10.0.2.2";
-      } else {
-        url.hostname = "127.0.0.1";
-      }
-    }
-    // Remove trailing slash
-    return url.toString().replace(/\/$/, "");
-  } catch {
-    return RAW_BASE_URL;
-  }
-}
 
 export type TechnicianPayment = {
   id: string;
@@ -77,7 +52,7 @@ export type PaymentFilters = {
 export async function fetchTechnicianPayments(
   filters: PaymentFilters = {}
 ): Promise<PaymentsResponse> {
-  const baseUrl = getBaseUrl();
+  const baseUrl = BASE_URL;
   const token = await getToken();
 
   if (!token) {
@@ -174,7 +149,7 @@ export async function fetchTechnicianPayments(
 
 // Get payment details
 export async function fetchPaymentDetails(paymentId: string): Promise<TechnicianPayment> {
-  const baseUrl = getBaseUrl();
+  const baseUrl = BASE_URL;
   const token = await getToken();
 
   if (!token) {
@@ -212,7 +187,7 @@ export async function fetchPaymentDetails(paymentId: string): Promise<Technician
 export async function exportPayments(
   filters: PaymentFilters & { format: "csv" | "pdf" } = { format: "csv" }
 ): Promise<{ url: string; filename: string }> {
-  const baseUrl = getBaseUrl();
+  const baseUrl = BASE_URL;
   const token = await getToken();
 
   if (!token) {

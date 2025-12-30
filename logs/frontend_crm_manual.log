@@ -1,0 +1,25 @@
+
+> rentalease-client@0.0.0 dev /Users/juhan/Developer/The_Digital_Dude/rentalease_crm/RentalEase-CRM
+> vite --host
+
+
+  VITE v7.0.0  ready in 168 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.0.104:5173/
+DEPRECATION WARNING [import]: Sass @import rules are deprecated and will be removed in Dart Sass 3.0.0.
+
+More info and automated migrator: https://sass-lang.com/d/import
+
+  ╷
+2 │ @import "../../pages/Login/Login.scss";
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  ╵
+    src/components/LoginForm/LoginForm.scss 2:9  root stylesheet
+
+2:51:08 PM [vite] (client) hmr update /src/components/PillBadge/PillBadge.tsx
+2:52:12 PM [vite] (client) hmr update /src/components/PillBadge/PillBadge.scss
+3:03:37 PM [vite] (client) hmr update /src/pages/AgencyProfile/AgencyProfile.tsx
+3:08:42 PM [vite] (client) hmr update /src/pages/AgencyProfile/AgencyProfile.tsx
+3:09:43 PM [vite] (client) hmr update /src/pages/AgencyProfile/AgencyProfile.tsx, /src/pages/Login/PasswordReset.tsx, /src/pages/Login/TeamMemberLogin.tsx, /src/components/LoginForm/LoginForm.tsx, /src/pages/Agencies/Agencies.tsx
+3:10:11 PM [vite] (client) hmr update /src/pages/AgencyProfile/AgencyProfile.tsx, /src/pages/Login/PasswordReset.tsx, /src/pages/Login/TeamMemberLogin.tsx, /src/components/LoginForm/LoginForm.tsx, /src/pages/Agencies/Agencies.tsx
