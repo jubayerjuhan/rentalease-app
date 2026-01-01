@@ -1,0 +1,278 @@
+import React, { useState } from 'react';
+import { ActivityIndicator, ColorValue, GestureResponderEvent, Image, Pressable, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle, TouchableOpacity } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTheme as useAppTheme } from '../contexts/ThemeContext';
+
+export function useTheme() {
+  const { theme, isDark } = useAppTheme();
+  return { 
+    mode: isDark ? 'dark' : 'light', 
+    colors: {
+      background: theme.background,
+      text: theme.text,
+      primary: theme.primary,
+      accent: theme.primary,
+      inputBg: theme.surface,
+      inputBorder: theme.border,
+      placeholder: theme.placeholder,
+      danger: theme.error,
+    }
+  };
+}
+
+type ButtonProps = {
+  title: string;
+  onPress?: (event: GestureResponderEvent) => void;
+  style?: ViewStyle;
+  disabled?: boolean;
+  loading?: boolean;
+  variant?: 'filled' | 'outline';
+};
+
+export function PrimaryButton({ title, onPress, style, disabled, loading, variant = 'filled' }: ButtonProps) {
+  const { colors } = useTheme();
+  const isOutline = variant === 'outline';
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled || loading}
+      style={({ pressed }) => [
+        styles.button,
+        {
+          backgroundColor: isOutline ? 'transparent' : colors.primary,
+          borderColor: colors.primary as ColorValue,
+          opacity: pressed ? 0.9 : 1,
+        },
+        style,
+      ]}
+    >
+      {loading ? (
+        <ActivityIndicator color={isOutline ? colors.primary : '#FFFFFF'} />
+      ) : (
+        <Text style={[styles.buttonText, { color: isOutline ? colors.primary : '#FFFFFF' }]}>{title}</Text>
+      )}
+    </Pressable>
+  );
+}
+
+export function InputField(props: TextInputProps & { error?: string }) {
+  const { colors } = useTheme();
+  const { error, style, placeholderTextColor, ...rest } = props as any;
+  return (
+    <View style={{ width: '100%' }}>
+      <TextInput
+        placeholderTextColor={placeholderTextColor || colors.placeholder}
+        style={[
+          styles.input,
+          {
+            backgroundColor: colors.inputBg,
+            borderColor: error ? colors.danger : colors.inputBorder,
+            color: colors.text,
+          },
+          style,
+        ]}
+        {...rest}
+      />
+      {!!error && <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>}
+    </View>
+  );
+}
+
+export function PasswordInputField(props: Omit<TextInputProps, 'secureTextEntry'> & { error?: string }) {
+  const { colors } = useTheme();
+  const { error, style, placeholderTextColor, ...rest } = props as any;
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
+  const togglePasswordVisibility = () => {
+    setIsPasswordVisible(!isPasswordVisible);
+  };
+
+  return (
+    <View style={{ width: '100%' }}>
+      <View style={styles.passwordContainer}>
+        <TextInput
+          placeholderTextColor={placeholderTextColor || colors.placeholder}
+          style={[
+            styles.input,
+            styles.passwordInput,
+            {
+              backgroundColor: colors.inputBg,
+              borderColor: error ? colors.danger : colors.inputBorder,
+              color: colors.text,
+            },
+            style,
+          ]}
+          secureTextEntry={!isPasswordVisible}
+          {...rest}
+        />
+        <TouchableOpacity
+          style={styles.eyeButton}
+          onPress={togglePasswordVisibility}
+        >
+          <MaterialCommunityIcons
+            name={isPasswordVisible ? 'eye-off' : 'eye'}
+            size={20}
+            color={colors.placeholder}
+          />
+        </TouchableOpacity>
+      </View>
+      {!!error && <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>}
+    </View>
+  );
+}
+
+export function ScreenContainer({ children }: { children: React.ReactNode }) {
+  const { colors } = useTheme();
+  return <View style={[styles.container, { backgroundColor: colors.background }]}>{children}</View>;
+}
+
+export function Title({ children }: { children: React.ReactNode }) {
+  const { colors } = useTheme();
+  return <Text style={[styles.title, { color: colors.text }]}>{children}</Text>;
+}
+
+export function Subtitle({ children }: { children: React.ReactNode }) {
+  const { colors } = useTheme();
+  return <Text style={[styles.subtitle, { color: colors.placeholder }]}>{children}</Text>;
+}
+
+export function LinkText({ children, onPress }: { children: React.ReactNode; onPress: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <Pressable onPress={onPress} style={{ paddingVertical: 8 }}>
+      <Text style={{ color: colors.primary, textAlign: 'center', fontSize: 16 }}>{children}</Text>
+    </Pressable>
+  );
+}
+
+export function Logo({ size = 160 }: { size?: number }) {
+  return (
+    <View style={{ alignItems: 'center', marginBottom: 12 }}>
+      <Image
+        source={require('@assets/rentalease-logo.png')}
+        style={{ width: size, aspectRatio: 1, resizeMode: 'contain' }}
+      />
+    </View>
+  );
+}
+
+export function ThemeToggle() {
+  const { theme, isDark, toggleTheme } = useAppTheme();
+  
+  const handleToggle = () => {
+    // Immediate haptic feedback
+    try {
+      const Haptics = require('expo-haptics');
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (error) {
+      console.log('Haptics not available:', error);
+    }
+    
+    // Immediate theme toggle
+    toggleTheme();
+  };
+  
+  return (
+    <TouchableOpacity
+      style={[
+        styles.themeToggle, 
+        { 
+          backgroundColor: theme.surface, 
+          borderColor: theme.border,
+        }
+      ]}
+      onPress={handleToggle}
+      activeOpacity={0.6}
+    >
+      <MaterialCommunityIcons
+        name={isDark ? 'weather-night' : 'weather-sunny'}
+        size={20}
+        color={theme.text}
+      />
+    </TouchableOpacity>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  subtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  button: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  input: {
+    width: '100%',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    marginBottom: 12,
+    fontSize: 16,
+  },
+  passwordContainer: {
+    position: 'relative',
+    width: '100%',
+  },
+  passwordInput: {
+    paddingRight: 50,
+    marginBottom: 0,
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 12,
+    top: '50%',
+    transform: [{ translateY: -20 }],
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 40,
+    height: 40,
+  },
+  errorText: {
+    fontSize: 13,
+    marginTop: 6,
+    marginBottom: 8,
+  },
+  themeToggle: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+});
