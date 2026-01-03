@@ -1,4 +1,5 @@
 import React, { createContext, useContext, ReactNode } from "react";
+import { StatusBar } from "expo-status-bar";
 
 export interface Theme {
   primary: string;
@@ -11,6 +12,7 @@ export interface Theme {
   border: string;
   textSecondary: string;
   textTertiary: string;
+  placeholder: string;
 }
 
 const lightTheme: Theme = {
@@ -24,6 +26,7 @@ const lightTheme: Theme = {
   border: "#E5E7EB",
   textSecondary: "#6B7280",
   textTertiary: "#9CA3AF",
+  placeholder: "#9CA3AF",
 };
 
 const darkTheme: Theme = {
@@ -37,6 +40,7 @@ const darkTheme: Theme = {
   border: "#374151",
   textSecondary: "#D1D5DB",
   textTertiary: "#9CA3AF",
+  placeholder: "#9CA3AF",
 };
 
 interface ThemeContextType {
@@ -62,6 +66,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({
 
   return (
     <ThemeContext.Provider value={{ theme, isDark, toggleTheme }}>
+      <StatusBar
+        style={isDark ? "light" : "dark"}
+        backgroundColor="transparent"
+        translucent={true}
+      />
       {children}
     </ThemeContext.Provider>
   );
@@ -74,4 +83,3 @@ export const useTheme = (): ThemeContextType => {
   }
   return context;
 };
-

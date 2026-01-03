@@ -20,6 +20,9 @@ export async function setToken(token: string): Promise<void> {
   }
 }
 
+// Backwards-compatible alias used in UI
+export const saveToken = setToken;
+
 export async function deleteToken(): Promise<void> {
   try {
     await SecureStore.deleteItemAsync(TOKEN_KEY);

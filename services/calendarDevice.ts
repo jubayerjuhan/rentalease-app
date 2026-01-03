@@ -1,7 +1,7 @@
 import * as Calendar from 'expo-calendar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
-import { requestCalendarPermissions, getDefaultCalendar, showCalendarSetupInstructions } from '../app/utils/calendarPermissions';
+import { requestCalendarPermissions, getDefaultCalendar, showCalendarSetupInstructions } from './calendarPermissions';
 import { CalendarEvent } from './calendarApi';
 
 const CALENDAR_ID_KEY = 'rentalease_calendar_id';

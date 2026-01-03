@@ -78,8 +78,8 @@ export default function ActiveJobsPage() {
     loadJobs(true, selectedStatus);
   }, [loadJobs, selectedStatus]);
 
-  const changeStatus = useCallback((pill: { id: string; label: string }) => {
-    setSelectedStatus(pill.id);
+  const changeStatus = useCallback((pillId: string) => {
+    setSelectedStatus(pillId);
   }, []);
 
   // Handle job completion
@@ -428,22 +428,24 @@ export default function ActiveJobsPage() {
 
   const renderEmptyState = useCallback(
     () => (
-      <View style={styles.emptyState}>
-        <MaterialCommunityIcons
-          name="clipboard-list"
-          size={64}
-          color={theme.textTertiary}
-        />
-        <Text style={[styles.emptyTitle, { color: theme.text }]}>
-          No {selectedStatus === "All" ? "" : selectedStatus} Jobs
-        </Text>
-        <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-          {selectedStatus === "All"
-            ? "You don't have any jobs at the moment"
-            : selectedStatus === "Active"
-            ? "You don't have any active jobs at the moment"
-            : `No ${selectedStatus.toLowerCase()} jobs found`}
-        </Text>
+      <View style={styles.emptyStateWrapper}>
+        <View style={styles.emptyState}>
+          <MaterialCommunityIcons
+            name="clipboard-list"
+            size={64}
+            color={theme.textTertiary}
+          />
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>
+            No {selectedStatus === "All" ? "" : selectedStatus} Jobs
+          </Text>
+          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+            {selectedStatus === "All"
+              ? "You don't have any jobs at the moment"
+              : selectedStatus === "Active"
+              ? "You don't have any active jobs at the moment"
+              : `No ${selectedStatus.toLowerCase()} jobs found`}
+          </Text>
+        </View>
       </View>
     ),
     [selectedStatus, theme]
@@ -451,16 +453,18 @@ export default function ActiveJobsPage() {
 
   const renderErrorState = useCallback(
     () => (
-      <View style={styles.emptyState}>
-        <MaterialCommunityIcons name="alert-circle" size={64} color="#EF4444" />
-        <Text style={styles.emptyTitle}>Error Loading Jobs</Text>
-        <Text style={styles.emptyText}>{error}</Text>
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={() => loadJobs(false, selectedStatus)}
-        >
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
+      <View style={styles.emptyStateWrapper}>
+        <View style={styles.emptyState}>
+          <MaterialCommunityIcons name="alert-circle" size={64} color="#EF4444" />
+          <Text style={styles.emptyTitle}>Error Loading Jobs</Text>
+          <Text style={styles.emptyText}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => loadJobs(false, selectedStatus)}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     ),
     [error, loadJobs, selectedStatus]
@@ -490,7 +494,10 @@ export default function ActiveJobsPage() {
         pills={statusOptions}
         selectedPill={selectedStatus}
         onPillPress={changeStatus}
-        style={{ marginTop: 10, marginBottom: 8 }}
+        theme={theme}
+        isDark={isDark}
+        style={{ marginTop: 4, marginBottom: 16 }}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
       />
 
       {/* Jobs List */}
@@ -517,9 +524,11 @@ export default function ActiveJobsPage() {
           ListEmptyComponent={renderEmptyState}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
-            styles.listContainer,
-            { paddingBottom: 100 },
-            jobs.length === 0 && { flex: 1 },
+            jobs.length === 0 && styles.emptyListContainer,
+            jobs.length > 0 && [
+              styles.listContainer,
+              { paddingBottom: 100 },
+            ],
           ]}
           removeClippedSubviews={true}
           maxToRenderPerBatch={10}
@@ -627,7 +636,12 @@ const createStyles = (theme: Theme) =>
       color: theme.textSecondary,
     },
     listContainer: {
-      paddingTop: 8,
+      paddingTop: 4,
+    },
+    emptyListContainer: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     jobCard: {
       backgroundColor: theme.card,
@@ -759,11 +773,16 @@ const createStyles = (theme: Theme) =>
       fontWeight: "600",
       marginLeft: 6,
     },
-    emptyState: {
+    emptyStateWrapper: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      paddingVertical: 60,
+      minHeight: 400,
+    },
+    emptyState: {
+      justifyContent: "center",
+      alignItems: "center",
+      paddingVertical: 40,
       paddingHorizontal: 20,
     },
     emptyTitle: {
@@ -772,6 +791,7 @@ const createStyles = (theme: Theme) =>
       color: theme.text,
       marginTop: 16,
       marginBottom: 8,
+      textAlign: "center",
     },
     emptyText: {
       fontSize: 16,
@@ -779,6 +799,7 @@ const createStyles = (theme: Theme) =>
       textAlign: "center",
       paddingHorizontal: 32,
       marginBottom: 16,
+      lineHeight: 22,
     },
     retryButton: {
       backgroundColor: theme.primary,
