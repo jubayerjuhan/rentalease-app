@@ -1,5 +1,30 @@
-import { BASE_URL } from "../config/api";
+import { Platform } from "react-native";
 import { getToken } from "./secureStore";
+
+const RAW_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined;
+
+function getBaseUrl(): string {
+  if (!RAW_BASE_URL) {
+    throw new Error(
+      "Missing EXPO_PUBLIC_API_BASE_URL. Set it in .env (e.g., http://localhost:4000) and restart the dev server."
+    );
+  }
+  try {
+    const url = new URL(RAW_BASE_URL);
+    // Normalize localhost for simulators/emulators
+    if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+      if (Platform.OS === "android") {
+        url.hostname = "10.0.2.2";
+      } else {
+        url.hostname = "127.0.0.1";
+      }
+    }
+    // Remove trailing slash
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return RAW_BASE_URL;
+  }
+}
 
 export type TechnicianProfile = {
   id: string;
@@ -50,7 +75,7 @@ export type ChangePasswordData = {
 
 // Get technician profile
 export async function getProfile(): Promise<TechnicianProfile> {
-  const baseUrl = BASE_URL;
+  const baseUrl = getBaseUrl();
   const token = await getToken();
 
   if (!token) {
@@ -93,7 +118,7 @@ export async function getProfile(): Promise<TechnicianProfile> {
 
 // Update technician profile
 export async function updateProfile(profileData: ProfileUpdateData): Promise<TechnicianProfile> {
-  const baseUrl = BASE_URL;
+  const baseUrl = getBaseUrl();
   const token = await getToken();
 
   if (!token) {
@@ -137,7 +162,7 @@ export async function updateProfile(profileData: ProfileUpdateData): Promise<Tec
 
 // Change password
 export async function changePassword(passwordData: ChangePasswordData): Promise<string> {
-  const baseUrl = BASE_URL;
+  const baseUrl = getBaseUrl();
   const token = await getToken();
 
   if (!token) {

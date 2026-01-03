@@ -48,6 +48,7 @@ const getJobTypeIcon = (jobType: string) => {
     Electrical: "lightning-bolt",
     Plumbing: "pipe-wrench",
     HVAC: "air-conditioner",
+    "Pool Safety": "pool",
     "Routine Inspection": "clipboard-check",
     Repairs: "tools",
   };
@@ -236,9 +237,9 @@ export default function JobsPage() {
   };
 
   // Handle filter changes
-  const handleFilterChange = (filter: { id: string; label: string }) => {
-    setSelectedFilter(filter.id);
-    applyFiltersAndSearch(allJobs, searchQuery, filter.id);
+  const handleFilterChange = (filterId: string) => {
+    setSelectedFilter(filterId);
+    applyFiltersAndSearch(allJobs, searchQuery, filterId);
   };
 
   const onSearch = () => {
@@ -537,20 +538,22 @@ export default function JobsPage() {
   };
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <MaterialCommunityIcons
-        name="briefcase-search"
-        size={64}
-        color={theme.textTertiary}
-      />
-      <Text style={[styles.emptyTitle, { color: theme.text }]}>
-        No Available Jobs
-      </Text>
-      <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-        {searchQuery
-          ? "Try adjusting your search or filters"
-          : "Check back later for new opportunities"}
-      </Text>
+    <View style={styles.emptyStateWrapper}>
+      <View style={styles.emptyState}>
+        <MaterialCommunityIcons
+          name="briefcase-search"
+          size={64}
+          color={theme.textTertiary}
+        />
+        <Text style={[styles.emptyTitle, { color: theme.text }]}>
+          No Available Jobs
+        </Text>
+        <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+          {searchQuery
+            ? "Try adjusting your search or filters"
+            : "Check back later for new opportunities"}
+        </Text>
+      </View>
     </View>
   );
 
@@ -622,7 +625,10 @@ export default function JobsPage() {
         pills={filterOptions}
         selectedPill={selectedFilter}
         onPillPress={handleFilterChange}
-        style={{ marginBottom: 8 }}
+        theme={theme}
+        isDark={isDark}
+        style={{ marginBottom: 16 }}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
       />
 
       {/* Jobs List */}
@@ -653,9 +659,11 @@ export default function JobsPage() {
           onEndReachedThreshold={0.3}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
-            styles.listContainer,
-            { paddingBottom: 110 },
-            jobs.length === 0 && { flex: 1 },
+            (searchQuery.trim() || selectedFilter !== "All" ? filteredJobs : jobs).length === 0 && styles.emptyListContainer,
+            (searchQuery.trim() || selectedFilter !== "All" ? filteredJobs : jobs).length > 0 && [
+              styles.listContainer,
+              { paddingBottom: 110 },
+            ],
           ]}
           ListFooterComponent={
             loadingMore ? (
@@ -842,7 +850,12 @@ const styles = StyleSheet.create({
     color: "#6B7280",
   },
   listContainer: {
-    paddingTop: 8,
+    paddingTop: 4,
+  },
+  emptyListContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loadingMore: {
     flexDirection: "row",
@@ -1047,11 +1060,16 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginLeft: 6,
   },
-  emptyState: {
+  emptyStateWrapper: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 60,
+    minHeight: 400,
+  },
+  emptyState: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 40,
     paddingHorizontal: 20,
   },
   emptyTitle: {
@@ -1060,12 +1078,14 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     marginTop: 16,
     marginBottom: 8,
+    textAlign: "center",
   },
   emptyText: {
     fontSize: 16,
     color: "#6B7280",
     textAlign: "center",
     paddingHorizontal: 32,
+    lineHeight: 22,
   },
   modalOverlay: {
     flex: 1,
