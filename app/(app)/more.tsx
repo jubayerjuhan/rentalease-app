@@ -93,9 +93,9 @@ export default function MorePage() {
       onPress: () => router.push("/help"),
     },
     {
-      title: "Terms & Privacy",
+      title: "Privacy Policy",
       icon: "shield-check-outline",
-      onPress: () => Alert.alert("Terms", "Terms & Privacy coming soon..."),
+      onPress: () => router.push("/(app)/privacy-policy"),
     },
     {
       title: "About",
