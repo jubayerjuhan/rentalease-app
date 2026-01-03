@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "RentalEase_Technician",
-    "slug": "RentalEase_Technician",
+    "name": "RentalEase Technician",
+    "slug": "rentalease-technician",
     "version": "1.0.0",
     "owner": "juhan.rokoautomations",
     "orientation": "portrait",
@@ -18,11 +18,9 @@
       "bundleIdentifier": "com.rentalease.technician",
       "buildNumber": "1",
       "infoPlist": {
-        "NSAppTransportSecurity": {
-          "NSAllowsArbitraryLoads": true
-        },
         "ITSAppUsesNonExemptEncryption": false,
-        "UILaunchStoryboardName": "SplashScreen"
+        "UILaunchStoryboardName": "SplashScreen",
+        "UIViewControllerBasedStatusBarAppearance": true
       }
     },
     "android": {
@@ -52,7 +50,14 @@
           "cameraPermission": "Allow RentalEase to access your camera to take inspection photos."
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Allow RentalEase to access your calendar to sync job schedules and send reminders.",
+          "remindersPermission": "Allow RentalEase to set reminders for upcoming jobs."
+        }
+      ]
     ],
     "scheme": "rentalease",
     "extra": {
