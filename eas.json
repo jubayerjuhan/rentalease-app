@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 5.0.0"
+    "version": "16.28.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -8,6 +9,13 @@
       "distribution": "internal",
       "ios": {
         "simulator": true
+      }
+    },
+    "development-device": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": false
       }
     },
     "preview": {
@@ -30,9 +38,9 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "your-apple-id@example.com",
-        "ascAppId": "will-be-generated-in-app-store-connect",
-        "appleTeamId": "your-team-id"
+        "companyName": "RentalEase Pty Ltd",
+        "language": "en-AU",
+        "sku": "rentalease-technician-ios"
       }
     }
   }

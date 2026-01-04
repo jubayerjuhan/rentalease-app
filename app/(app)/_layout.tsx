@@ -9,9 +9,26 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
+import { registerForPushNotificationsIfPossible, sendPushTokenToBackend } from "../../services/pushNotifications";
 
 export default function AppLayout() {
   const { theme } = useTheme();
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const expoToken = await registerForPushNotificationsIfPossible();
+        if (!expoToken || cancelled) return;
+        await sendPushTokenToBackend(expoToken);
+      } catch (e) {
+        console.log("[Push] Registration skipped/failed:", (e as any)?.message || e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   
   return (
     <Tabs
@@ -126,6 +143,12 @@ export default function AppLayout() {
       />
       <Tabs.Screen
         name="calendar"
+        options={{
+          href: null, // Hide from tab bar
+        }}
+      />
+      <Tabs.Screen
+        name="privacy-policy"
         options={{
           href: null, // Hide from tab bar
         }}

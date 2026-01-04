@@ -46,6 +46,8 @@ export const FilterPills: React.FC<FilterPillsProps> = ({
       showsHorizontalScrollIndicator={false}
       style={style}
       contentContainerStyle={[styles.container, contentContainerStyle]}
+      overScrollMode="never"
+      bounces={false}
     >
       {pills.map((pill) => {
         const isActive = selectedPill === pill.id || pill.active;
@@ -109,8 +111,9 @@ export const FilterPills: React.FC<FilterPillsProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 0,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
     gap: 8,
     alignItems: 'center',
   },

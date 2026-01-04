@@ -13,7 +13,6 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fetchTechnicianPayments, TechnicianPayment, PaymentFilters } from "@services/payments";
 import { useRouter } from "expo-router";
 import { useTheme, Theme } from "../../contexts/ThemeContext";
-import { FilterPills } from "../../components/FilterPills";
 
 export default function MyPaymentsPage() {
   const router = useRouter();
@@ -21,7 +20,6 @@ export default function MyPaymentsPage() {
   const [payments, setPayments] = useState<TechnicianPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState("All");
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState({
     totalPending: 0,
@@ -31,20 +29,14 @@ export default function MyPaymentsPage() {
   });
 
   const loadPayments = useCallback(
-    async (isRefresh = false, status = "All") => {
+    async (isRefresh = false) => {
       try {
         if (isRefresh) setRefreshing(true);
         else setLoading(true);
 
         setError(null);
 
-        const filters: PaymentFilters = {};
-        if (status !== "All") {
-          filters.status = status;
-        }
-
         const data = await fetchTechnicianPayments({
-          ...filters,
           page: 1,
           limit: 50,
         });
@@ -77,16 +69,12 @@ export default function MyPaymentsPage() {
   );
 
   useEffect(() => {
-    loadPayments(false, selectedStatus);
-  }, [loadPayments, selectedStatus]);
+    loadPayments(false);
+  }, [loadPayments]);
 
   const onRefresh = useCallback(() => {
-    loadPayments(true, selectedStatus);
-  }, [loadPayments, selectedStatus]);
-
-  const changeStatus = useCallback((pill: { id: string; label: string }) => {
-    setSelectedStatus(pill.id);
-  }, []);
+    loadPayments(true);
+  }, [loadPayments]);
 
   const getStatusInfo = (status: string) => {
     const statusConfig: Record<string, { color: string; bgColor: string; icon: string }> = {
@@ -262,16 +250,14 @@ export default function MyPaymentsPage() {
           color={theme.textTertiary}
         />
         <Text style={[styles.emptyTitle, { color: theme.text }]}>
-          No {selectedStatus === "All" ? "" : selectedStatus} Payments
+          No Payments
         </Text>
         <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-          {selectedStatus === "All"
-            ? "You don't have any payments yet"
-            : `No ${selectedStatus.toLowerCase()} payments found`}
+          You don't have any payments yet
         </Text>
       </View>
     ),
-    [selectedStatus, theme]
+    [theme]
   );
 
   const renderErrorState = useCallback(
@@ -282,22 +268,14 @@ export default function MyPaymentsPage() {
         <Text style={styles.emptyText}>{error}</Text>
         <TouchableOpacity
           style={styles.retryButton}
-          onPress={() => loadPayments(false, selectedStatus)}
+          onPress={() => loadPayments(false)}
         >
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
     ),
-    [error, loadPayments, selectedStatus]
+    [error, loadPayments]
   );
-
-  const statusOptions = [
-    { id: "All", label: "All Payments" },
-    { id: "Pending", label: "Pending" },
-    { id: "Processing", label: "Processing" },
-    { id: "Paid", label: "Paid" },
-    { id: "Cancelled", label: "Cancelled" },
-  ];
 
   const styles = createStyles(theme);
 
@@ -307,7 +285,7 @@ export default function MyPaymentsPage() {
       <View style={styles.header}>
         <Text style={styles.title}>My Payments</Text>
         <Text style={styles.subtitle}>
-          {payments.length} {selectedStatus.toLowerCase()} payments
+          {payments.length} payments
         </Text>
       </View>
 
@@ -324,7 +302,7 @@ export default function MyPaymentsPage() {
               Pending
             </Text>
           </View>
-          <Text style={[styles.summaryAmount, { color: theme.warning }]}>
+          <Text style={[styles.summaryAmount, { color: isDark ? "#FCD34D" : theme.warning }]}>
             {formatCurrency(summary.pendingAmount)}
           </Text>
           <Text style={[styles.summaryCount, { color: theme.textSecondary }]}>
@@ -343,7 +321,7 @@ export default function MyPaymentsPage() {
               Paid
             </Text>
           </View>
-          <Text style={[styles.summaryAmount, { color: theme.success }]}>
+          <Text style={[styles.summaryAmount, { color: isDark ? "#6EE7B7" : theme.success }]}>
             {formatCurrency(summary.paidAmount)}
           </Text>
           <Text style={[styles.summaryCount, { color: theme.textSecondary }]}>
@@ -351,14 +329,6 @@ export default function MyPaymentsPage() {
           </Text>
         </View>
       </View>
-
-      {/* Status Filter Pills */}
-      <FilterPills
-        pills={statusOptions}
-        selectedPill={selectedStatus}
-        onPillPress={changeStatus}
-        style={{ marginTop: 10, marginBottom: 8 }}
-      />
 
       {/* Payments List */}
       {loading ? (
@@ -425,19 +395,20 @@ const createStyles = (theme: Theme) =>
     summarySection: {
       flexDirection: "row",
       paddingHorizontal: 16,
-      paddingTop: 20,
+      paddingTop: 16,
+      paddingBottom: 16,
       gap: 12,
     },
     summaryCard: {
       flex: 1,
       backgroundColor: theme.card,
-      borderRadius: 16,
+      borderRadius: 12,
       padding: 16,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
+      shadowOpacity: 0.08,
       shadowRadius: 8,
-      elevation: 2,
+      elevation: 3,
     },
     summaryHeader: {
       flexDirection: "row",
@@ -445,18 +416,19 @@ const createStyles = (theme: Theme) =>
       marginBottom: 8,
     },
     summaryTitle: {
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: "600",
       color: theme.text,
       marginLeft: 8,
     },
     summaryAmount: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: "bold",
-      marginBottom: 4,
+      marginTop: 4,
+      marginBottom: 2,
     },
     summaryCount: {
-      fontSize: 12,
+      fontSize: 11,
       color: theme.textSecondary,
     },
     loadingContainer: {
@@ -471,7 +443,7 @@ const createStyles = (theme: Theme) =>
       color: theme.textSecondary,
     },
     listContainer: {
-      paddingTop: 8,
+      paddingTop: 4,
     },
     paymentCard: {
       backgroundColor: theme.card,

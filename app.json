@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "RentalEase Technician",
-    "slug": "rentalease-technician",
+    "slug": "RentalEase_Technician",
     "version": "1.0.0",
     "owner": "juhan.rokoautomations",
     "orientation": "portrait",
@@ -14,7 +14,7 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.rentalease.technician",
       "buildNumber": "1",
       "infoPlist": {
@@ -43,6 +43,7 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "expo-notifications",
       [
         "expo-image-picker",
         {

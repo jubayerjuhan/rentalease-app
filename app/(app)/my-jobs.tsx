@@ -174,6 +174,50 @@ export default function ActiveJobsPage() {
     ({ item }: { item: Job }) => {
       const statusInfo = getStatusInfo(item.status);
 
+      const getJobTitle = () => {
+        // If title exists, use it
+        if (item.title) return item.title;
+
+        // Get location info
+        let location = "";
+        if (item.property?.address) {
+          if (typeof item.property.address === "string") {
+            // Extract suburb or first part of address
+            const parts = item.property.address.split(",");
+            location = parts.length > 1 ? parts[1].trim() : parts[0].trim();
+          } else {
+            // Use suburb or street
+            location = item.property.address.suburb || item.property.address.street || "";
+          }
+        }
+
+        // Get property type for context
+        const propertyType = item.property?.propertyType || "";
+
+        // Generate title based on job type
+        const jobTypeTitles: Record<string, string> = {
+          "Smoke": "Smoke Alarm Inspection",
+          "Gas": "Gas Safety Inspection",
+          "Electrical": "Electrical Safety Check",
+          "Plumbing": "Plumbing Inspection",
+          "HVAC": "HVAC Maintenance",
+          "Pool Safety": "Pool Safety Inspection",
+          "Routine Inspection": "Property Inspection",
+          "Repairs": "Property Repairs",
+        };
+
+        const baseTitle = jobTypeTitles[item.jobType] || `${item.jobType} Service`;
+
+        // Add location or property type to make it more specific
+        if (location) {
+          return `${baseTitle} - ${location}`;
+        } else if (propertyType) {
+          return `${baseTitle} (${propertyType})`;
+        }
+
+        return baseTitle;
+      };
+
       const getPropertyAddress = () => {
         if (typeof item.property?.address === "string") {
           return item.property.address;
@@ -289,7 +333,7 @@ export default function ActiveJobsPage() {
               </View>
             </View>
             <Text style={[styles.jobTitle, { color: theme.text }]}>
-              {item.title || item.description || "Job Title"}
+              {getJobTitle()}
             </Text>
             <View style={styles.jobTypeContainer}>
               <MaterialCommunityIcons
@@ -496,8 +540,7 @@ export default function ActiveJobsPage() {
         onPillPress={changeStatus}
         theme={theme}
         isDark={isDark}
-        style={{ marginTop: 4, marginBottom: 16 }}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
+        style={{ marginTop: 4, marginBottom: 8 }}
       />
 
       {/* Jobs List */}

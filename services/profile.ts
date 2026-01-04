@@ -55,16 +55,19 @@ export type TechnicianProfile = {
 };
 
 export type ProfileUpdateData = {
-  firstName: string;
-  lastName: string;
-  phone: string;
-  experience: number;
-  address: {
-    street: string;
-    suburb: string;
-    state: string;
-    postcode: string;
-    fullAddress: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  licenseNumber?: string;
+  licenseExpiry?: string;
+  experience?: number;
+  hourlyRate?: number;
+  address?: {
+    street?: string;
+    suburb?: string;
+    state?: string;
+    postcode?: string;
+    fullAddress?: string;
   };
 };
 
@@ -196,6 +199,93 @@ export async function changePassword(passwordData: ChangePasswordData): Promise<
     return data.message || "Password changed successfully";
   } catch (error: any) {
     console.log("[Profile] Change password error:", {
+      name: error?.name,
+      message: error?.message,
+      stack: error?.stack,
+    });
+    throw new Error(error?.message || "Network request failed");
+  }
+}
+
+// Update technician profile image (multipart/form-data)
+export async function updateProfileImage(image: {
+  uri: string;
+  name?: string;
+  type?: string;
+}): Promise<TechnicianProfile> {
+  const baseUrl = getBaseUrl();
+  const token = await getToken();
+
+  if (!token) {
+    throw new Error("No authentication token found");
+  }
+
+  try {
+    const candidates = ["profileImage", "image", "file"];
+
+    const attemptUpload = async (fieldName: string) => {
+      const form = new FormData();
+      form.append(fieldName, {
+        uri: image.uri,
+        name: image.name || "profile.jpg",
+        type: image.type || "image/jpeg",
+      } as any);
+
+      const response = await fetch(
+        `${baseUrl}/api/v1/technician/auth/profile/image`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: form,
+        }
+      );
+
+      let data: any = null;
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+
+      return { response, data };
+    };
+
+    let lastError: string | undefined;
+    for (const fieldName of candidates) {
+      const { response, data } = await attemptUpload(fieldName);
+
+      console.log(
+        "[Profile] Update profile image response:",
+        JSON.stringify({ fieldName, status: response.status, body: data }, null, 2)
+      );
+
+      if (response.ok && data?.status === "success") {
+        return data.data.technician;
+      }
+
+      if (response.status === 401) {
+        throw new Error("Authentication expired. Please login again.");
+      }
+
+      const message =
+        data?.message ||
+        (typeof data === "string" ? data : undefined) ||
+        "Failed to update profile image";
+      lastError = message;
+
+      // Multer-style error; retry with alternate field name.
+      if (String(message).toLowerCase().includes("unexpected field")) {
+        continue;
+      }
+
+      throw new Error(message);
+    }
+
+    throw new Error(lastError || "Failed to update profile image");
+  } catch (error: any) {
+    console.log("[Profile] Update profile image error:", {
       name: error?.name,
       message: error?.message,
       stack: error?.stack,

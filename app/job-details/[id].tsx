@@ -253,6 +253,50 @@ const getJobTypeIcon = (jobType: string) => {
   return icons[jobType] || "briefcase";
 };
 
+const getJobTitle = (job: Job) => {
+  // If title exists, use it
+  if (job.title) return job.title;
+
+  // Get location info
+  let location = "";
+  if (job.property?.address) {
+    if (typeof job.property.address === "string") {
+      // Extract suburb or first part of address
+      const parts = job.property.address.split(",");
+      location = parts.length > 1 ? parts[1].trim() : parts[0].trim();
+    } else {
+      // Use suburb or street
+      location = job.property.address.suburb || job.property.address.street || "";
+    }
+  }
+
+  // Get property type for context
+  const propertyType = job.property?.propertyType || "";
+
+  // Generate title based on job type
+  const jobTypeTitles: Record<string, string> = {
+    "Smoke": "Smoke Alarm Inspection",
+    "Gas": "Gas Safety Inspection",
+    "Electrical": "Electrical Safety Check",
+    "Plumbing": "Plumbing Inspection",
+    "HVAC": "HVAC Maintenance",
+    "Pool Safety": "Pool Safety Inspection",
+    "Routine Inspection": "Property Inspection",
+    "Repairs": "Property Repairs",
+  };
+
+  const baseTitle = jobTypeTitles[job.jobType] || `${job.jobType} Service`;
+
+  // Add location or property type to make it more specific
+  if (location) {
+    return `${baseTitle} - ${location}`;
+  } else if (propertyType) {
+    return `${baseTitle} (${propertyType})`;
+  }
+
+  return baseTitle;
+};
+
 export default function JobDetailsPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -509,6 +553,22 @@ export default function JobDetailsPage() {
             { backgroundColor: theme.surface, borderBottomColor: theme.border },
           ]}
         >
+          {/* Back Button */}
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons
+              name="arrow-left"
+              size={24}
+              color={theme.primary}
+            />
+            <Text style={[styles.backButtonText, { color: theme.primary }]}>
+              Back
+            </Text>
+          </TouchableOpacity>
+
           <View style={styles.headerContent}>
             <View style={styles.jobIdContainer}>
               <Text style={[styles.jobId, { color: theme.primary }]}>
@@ -570,9 +630,9 @@ export default function JobDetailsPage() {
               </Text>
             </View>
             <Text
-              style={[styles.jobDescription, { color: theme.textSecondary }]}
+              style={[styles.jobDescription, { color: theme.text }]}
             >
-              {job.title || job.description || "Job title not available"}
+              {getJobTitle(job)}
             </Text>
           </View>
         </View>
@@ -1296,9 +1356,21 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   header: {
-    paddingVertical: 16,
+    paddingTop: 60,
+    paddingBottom: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    alignSelf: 'flex-start',
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 4,
   },
   headerContent: {
     // paddingHorizontal: 16,

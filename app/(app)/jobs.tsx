@@ -207,7 +207,7 @@ export default function JobsPage() {
       filtered = searchJobs(filtered, query);
     }
 
-    // Apply priority/status filter
+    // Apply priority/status/job type filter
     if (filter !== "All") {
       switch (filter) {
         case "Due Jobs":
@@ -221,6 +221,15 @@ export default function JobsPage() {
           break;
         case "Low Priority":
           filtered = filtered.filter(job => job.priority === "Low");
+          break;
+        case "Smoke":
+          filtered = filtered.filter(job => job.jobType === "Smoke");
+          break;
+        case "Gas":
+          filtered = filtered.filter(job => job.jobType === "Gas");
+          break;
+        case "Electrical":
+          filtered = filtered.filter(job => job.jobType === "Electrical");
           break;
         default:
           break;
@@ -306,15 +315,59 @@ export default function JobsPage() {
     loadJobs(false, { ...filterMap[pill.id], page: 1 });
   };
 
+  const getJobTitle = (job: Job) => {
+    // If title exists, use it
+    if (job.title) return job.title;
+
+    // Get location info
+    let location = "";
+    if (job.property?.address) {
+      if (typeof job.property.address === "string") {
+        // Extract suburb or first part of address
+        const parts = job.property.address.split(",");
+        location = parts.length > 1 ? parts[1].trim() : parts[0].trim();
+      } else {
+        // Use suburb or street
+        location = job.property.address.suburb || job.property.address.street || "";
+      }
+    }
+
+    // Get property type for context
+    const propertyType = job.property?.propertyType || "";
+
+    // Generate title based on job type
+    const jobTypeTitles: Record<string, string> = {
+      "Smoke": "Smoke Alarm Inspection",
+      "Gas": "Gas Safety Inspection",
+      "Electrical": "Electrical Safety Check",
+      "Plumbing": "Plumbing Inspection",
+      "HVAC": "HVAC Maintenance",
+      "Pool Safety": "Pool Safety Inspection",
+      "Routine Inspection": "Property Inspection",
+      "Repairs": "Property Repairs",
+    };
+
+    const baseTitle = jobTypeTitles[job.jobType] || `${job.jobType} Service`;
+
+    // Add location or property type to make it more specific
+    if (location) {
+      return `${baseTitle} - ${location}`;
+    } else if (propertyType) {
+      return `${baseTitle} (${propertyType})`;
+    }
+
+    return baseTitle;
+  };
+
   const renderJobCard = ({ item }: { item: Job }) => {
     const isDue = isJobDue(item.dueDate);
-    
+
     return (
     <View
       style={[
         styles.jobCard,
-        { 
-          backgroundColor: theme.card, 
+        {
+          backgroundColor: theme.card,
           borderLeftColor: isDue ? theme.error : (item.status === "Completed" ? "#10B981" : theme.primary),
           borderWidth: isDue ? 2 : 0,
           borderColor: isDue ? theme.error : "transparent",
@@ -327,8 +380,8 @@ export default function JobsPage() {
           <View
             style={[
               styles.jobIdContainer,
-              { 
-                backgroundColor: item.status === "Completed" 
+              {
+                backgroundColor: item.status === "Completed"
                   ? "#10B981"
                   : (isDark ? theme.primary + "20" : "#F0F9FF")
               },
@@ -339,8 +392,8 @@ export default function JobsPage() {
               size={16}
               color={item.status === "Completed" ? "white" : theme.primary}
             />
-            <Text style={[styles.jobId, { 
-              color: item.status === "Completed" ? "white" : theme.primary 
+            <Text style={[styles.jobId, {
+              color: item.status === "Completed" ? "white" : theme.primary
             }]}>
               {item.job_id}
             </Text>
@@ -387,7 +440,7 @@ export default function JobsPage() {
           </View>
         </View>
         <Text style={[styles.jobTitle, { color: theme.text }]}>
-          {item.title || item.description}
+          {getJobTitle(item)}
         </Text>
         <View style={styles.jobTypeContainer}>
           <MaterialCommunityIcons
@@ -580,7 +633,7 @@ export default function JobsPage() {
           Available Jobs
         </Text>
         <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-          {pagination.totalItems} jobs available
+          {(searchQuery.trim() || selectedFilter !== "All" ? filteredJobs : jobs).length} jobs available
         </Text>
       </View>
 
@@ -627,8 +680,7 @@ export default function JobsPage() {
         onPillPress={handleFilterChange}
         theme={theme}
         isDark={isDark}
-        style={{ marginBottom: 16 }}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
+        style={{ marginBottom: 8 }}
       />
 
       {/* Jobs List */}
@@ -641,7 +693,7 @@ export default function JobsPage() {
         </View>
       ) : (
         <FlatList
-          data={(searchQuery.trim() || selectedFilter !== "All" ? filteredJobs : jobs).slice(0, 2)}
+          data={searchQuery.trim() || selectedFilter !== "All" ? filteredJobs : jobs}
           keyExtractor={(item, index) => `${item.id}-${item.job_id}-${index}`}
           renderItem={renderJobCard}
           refreshControl={

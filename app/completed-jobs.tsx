@@ -313,8 +313,22 @@ export default function CompletedJobsPage() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Stack.Screen
         options={{
-          title: "Completed Jobs",
-          headerBackTitle: "More",
+          title: "Job History",
+          headerShown: true,
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={{ paddingHorizontal: 12, paddingVertical: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+            >
+              <MaterialCommunityIcons
+                name="chevron-left"
+                size={28}
+                color={theme.primary}
+              />
+            </TouchableOpacity>
+          ),
           headerStyle: {
             backgroundColor: theme.surface,
           },

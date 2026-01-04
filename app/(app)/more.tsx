@@ -1,10 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Switch } from "react-native";
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Switch, Image } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { technicianLogout } from "../../services/auth";
 import { getProfile, TechnicianProfile } from "../../services/profile";
 import { useTheme, Theme } from "../../contexts/ThemeContext";
+
+function getInitials(profile?: TechnicianProfile | null) {
+  const first = (profile?.firstName || "").trim();
+  const last = (profile?.lastName || "").trim();
+  const full = (profile?.fullName || "").trim();
+
+  const source = (first || last) ? `${first} ${last}`.trim() : full;
+  if (!source) return "T";
+
+  const parts = source.split(/\s+/).filter(Boolean);
+  const a = (parts[0]?.[0] || "").toUpperCase();
+  const b = (parts[1]?.[0] || "").toUpperCase();
+  return (a + b) || "T";
+}
 
 export default function MorePage() {
   const router = useRouter();
@@ -80,7 +94,7 @@ export default function MorePage() {
     {
       title: "Notifications",
       icon: "bell-outline",
-      onPress: () => Alert.alert("Notifications", "Notification settings coming soon..."),
+      onPress: () => router.push("/notifications"),
     },
     {
       title: "Job History",
@@ -145,11 +159,15 @@ export default function MorePage() {
         <View style={styles.avatarContainer}>
           {profile?.profileImage?.cloudinaryUrl ? (
             <View style={styles.profileImageContainer}>
-              {/* TODO: Add Image component when image upload is implemented */}
-              <MaterialCommunityIcons name="account-circle" size={80} color={theme.primary} />
+              <Image
+                source={{ uri: profile.profileImage.cloudinaryUrl }}
+                style={styles.profileImage}
+              />
             </View>
           ) : (
-            <MaterialCommunityIcons name="account-circle" size={80} color={theme.primary} />
+            <View style={[styles.profileImageContainer, { backgroundColor: theme.primary }]}>
+              <Text style={styles.profileInitials}>{getInitials(profile)}</Text>
+            </View>
           )}
         </View>
         
@@ -241,6 +259,28 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.border,
   },
+  profileImageContainer: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: theme.primary,
+    backgroundColor: theme.card,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  profileImage: {
+    width: 88,
+    height: 88,
+    resizeMode: "cover",
+  },
+  profileInitials: {
+    color: "white",
+    fontSize: 24,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
   avatarContainer: {
     marginBottom: 16,
   },
@@ -260,14 +300,6 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     color: theme.success,
     fontWeight: '600',
     marginBottom: 16,
-  },
-  profileImageContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: theme.divider,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   editProfileButton: {
     flexDirection: 'row',
