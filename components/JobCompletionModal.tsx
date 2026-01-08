@@ -129,6 +129,32 @@ const getGenericPrefillValue = (
   field: InspectionField,
   today: string
 ): any => {
+  // Only provide test/placeholder values in development mode
+  if (!__DEV__) {
+    // In production, return minimal defaults without test data
+    switch (field.type) {
+      case "date":
+        return today; // Current date is reasonable default
+      case "number":
+        if (typeof field.min === "number") {
+          return field.min;
+        }
+        return null;
+      case "boolean":
+      case "checkbox":
+        return false;
+      case "multi-select":
+      case "checkbox-group":
+        return [];
+      case "photo":
+      case "photo-multi":
+        return [];
+      default:
+        return "";
+    }
+  }
+
+  // Development mode: provide test data for easier testing
   const baseText =
     field.placeholder || field.label || field.question || "Auto-filled value";
 
@@ -190,6 +216,11 @@ const buildTablePlaceholderRow = (
   template: InspectionTemplate,
   fieldId: string
 ) => {
+  // Only build placeholder rows in development mode
+  if (!__DEV__) {
+    return null;
+  }
+
   if (!Array.isArray(columns) || !columns.length) {
     return null;
   }
@@ -292,6 +323,11 @@ const buildTablePlaceholderRow = (
 const generateMediaPrefillForTemplate = (
   template: InspectionTemplate
 ): Record<string, InspectionMediaUpload[]> => {
+  // Only generate test media in development mode
+  if (!__DEV__) {
+    return {};
+  }
+
   const result: Record<string, InspectionMediaUpload[]> = {};
   let seed = 1;
 
@@ -402,7 +438,8 @@ const initializeFormValues = (
       }
     }
 
-    if (template.jobType === "Smoke") {
+    // Only provide test defaults in development
+    if (template.jobType === "Smoke" && __DEV__) {
       switch (field.id) {
         case "access-notes":
           return ["pets-present"];
@@ -460,110 +497,120 @@ const initializeFormValues = (
             return today;
           case "inspector-name":
           case "inspectorName":
-            return "John Smith";
+            // Use real technician name if available
+            if (jobDetailsData?.assignedTechnician) {
+              return `${jobDetailsData.assignedTechnician.firstName || ''} ${jobDetailsData.assignedTechnician.lastName || ''}`.trim();
+            }
+            // In development, use test data; in production, leave empty
+            return __DEV__ ? "John Smith" : "";
           case "license-number":
           case "licenseNumber":
-            return "LIC123456789";
+            return __DEV__ ? "LIC123456789" : "";
           case "vba-record-number":
           case "vbaRecordNumber":
-            return "VBA987654321";
+            return __DEV__ ? "VBA987654321" : "";
           default:
-            if (field.type === "boolean") {
-              return true;
-            }
-            if (field.type === "select") {
-              return field.options?.[0]?.value || "Yes";
+            if (__DEV__) {
+              if (field.type === "boolean") {
+                return true;
+              }
+              if (field.type === "select") {
+                return field.options?.[0]?.value || "Yes";
+              }
             }
             return genericPrefill(field);
         }
       }
 
-      if (
-        sectionId === "gas-installation" ||
-        field.id.includes("gas") ||
-        field.id.includes("cylinder")
-      ) {
-        if (field.type === "boolean") {
-          return true;
-        }
-        if (field.type === "select") {
-          return field.options?.[0]?.value || "Yes";
-        }
-        if (field.type === "radio") {
-          return "Yes";
-        }
+      // Only provide test data in development mode
+      if (__DEV__) {
         if (
-          field.id.includes("comment") ||
-          field.id.includes("note")
+          sectionId === "gas-installation" ||
+          field.id.includes("gas") ||
+          field.id.includes("cylinder")
         ) {
-          return "All components inspected and functioning correctly";
+          if (field.type === "boolean") {
+            return true;
+          }
+          if (field.type === "select") {
+            return field.options?.[0]?.value || "Yes";
+          }
+          if (field.type === "radio") {
+            return "Yes";
+          }
+          if (
+            field.id.includes("comment") ||
+            field.id.includes("note")
+          ) {
+            return "All components inspected and functioning correctly";
+          }
         }
-      }
 
-      if (
-        sectionId.includes("appliance") ||
-        field.id.includes("appliance") ||
-        field.id.includes("isolation")
-      ) {
-        if (field.type === "boolean") {
-          return true;
-        }
-        if (field.type === "select") {
-          return field.options?.[0]?.value || "Yes";
-        }
-        if (field.type === "radio") {
-          return "Yes";
-        }
         if (
-          field.id.includes("comment") ||
-          field.id.includes("note")
+          sectionId.includes("appliance") ||
+          field.id.includes("appliance") ||
+          field.id.includes("isolation")
         ) {
-          return "Appliance functioning correctly";
+          if (field.type === "boolean") {
+            return true;
+          }
+          if (field.type === "select") {
+            return field.options?.[0]?.value || "Yes";
+          }
+          if (field.type === "radio") {
+            return "Yes";
+          }
+          if (
+            field.id.includes("comment") ||
+            field.id.includes("note")
+          ) {
+            return "Appliance functioning correctly";
+          }
         }
-      }
 
-      if (
-        field.id.includes("correctly") ||
-        field.id.includes("leakage") ||
-        field.id.includes("valve") ||
-        field.id.includes("test") ||
-        field.id.includes("safe") ||
-        field.id.includes("compliant")
-      ) {
+        if (
+          field.id.includes("correctly") ||
+          field.id.includes("leakage") ||
+          field.id.includes("valve") ||
+          field.id.includes("test") ||
+          field.id.includes("safe") ||
+          field.id.includes("compliant")
+        ) {
+          if (field.type === "boolean") {
+            return true;
+          }
+          if (field.type === "select" || field.type === "radio") {
+            return field.id.includes("leakage") || field.id.includes("test")
+              ? "Pass"
+              : "Yes";
+          }
+          return genericPrefill(field);
+        }
+
         if (field.type === "boolean") {
           return true;
         }
         if (field.type === "select" || field.type === "radio") {
-          return field.id.includes("leakage") || field.id.includes("test")
-            ? "Pass"
-            : "Yes";
-        }
-        return genericPrefill(field);
-      }
-
-      if (field.type === "boolean") {
-        return true;
-      }
-      if (field.type === "select" || field.type === "radio") {
-        if (field.id.includes("test") || field.id.includes("leakage")) {
+          if (field.id.includes("test") || field.id.includes("leakage")) {
+            return (
+              field.options?.find((option) => option.value === "Pass")?.value ||
+              field.options?.[0]?.value ||
+              "Pass"
+            );
+          }
           return (
-            field.options?.find((option) => option.value === "Pass")?.value ||
+            field.options?.find((option) => option.value === "Yes")?.value ||
             field.options?.[0]?.value ||
-            "Pass"
+            "Yes"
           );
         }
-        return (
-          field.options?.find((option) => option.value === "Yes")?.value ||
-          field.options?.[0]?.value ||
-          "Yes"
-        );
-      }
-      if (
-        field.id.includes("comment") ||
-        field.id.includes("note") ||
-        field.id.includes("observation")
-      ) {
-        return "Inspection completed successfully. All safety standards met.";
+        if (
+          field.id.includes("comment") ||
+          field.id.includes("note") ||
+          field.id.includes("observation")
+        ) {
+          return "Inspection completed successfully. All safety standards met.";
+        }
       }
     }
 
@@ -764,7 +811,7 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
     setSelectedTemplate(templateToApply);
     setFormValues(initializeFormValues(templateToApply, jobDetails));
     setMediaByField(generateMediaPrefillForTemplate(templateToApply));
-    setNotes(DEFAULT_TEST_NOTES);
+    setNotes(__DEV__ ? DEFAULT_TEST_NOTES : "");
     setInspectionReportId(null);
     setInspectionReportUrl(undefined);
   };

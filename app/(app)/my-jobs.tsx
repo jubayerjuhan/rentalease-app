@@ -414,7 +414,10 @@ export default function ActiveJobsPage() {
                 color={theme.textSecondary}
               />
               <Text style={[styles.detailText, { color: theme.textSecondary }]}>
-                Technician: Juhan
+                Technician: {item.assignedTechnician
+                  ? `${item.assignedTechnician.firstName || ''} ${item.assignedTechnician.lastName || ''}`.trim()
+                  : 'Not Assigned'
+                }
               </Text>
             </View>
           </View>

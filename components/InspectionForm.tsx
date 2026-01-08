@@ -14,6 +14,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from "../contexts/ThemeContext";
+import SignatureCapture from './SignatureCapture';
 import type {
   InspectionTemplate,
   InspectionField,
@@ -195,6 +196,11 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
   editable = true,
 }) => {
   const { theme } = useTheme();
+  const [signatureModalVisible, setSignatureModalVisible] = useState(false);
+  const [currentSignatureField, setCurrentSignatureField] = useState<{
+    sectionId: string;
+    fieldId: string;
+  } | null>(null);
 
   const handlePickImage = async (
     field: InspectionField,
@@ -343,6 +349,29 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
       ? current.filter((val: string) => val !== optionValue)
       : [...current, optionValue];
     onChange(sectionId, field.id, nextValue);
+  };
+
+  const handleOpenSignature = (sectionId: string, fieldId: string) => {
+    if (!editable) return;
+    setCurrentSignatureField({ sectionId, fieldId });
+    setSignatureModalVisible(true);
+  };
+
+  const handleSaveSignature = (base64Signature: string) => {
+    if (currentSignatureField) {
+      onChange(
+        currentSignatureField.sectionId,
+        currentSignatureField.fieldId,
+        base64Signature
+      );
+    }
+    setSignatureModalVisible(false);
+    setCurrentSignatureField(null);
+  };
+
+  const handleClearSignature = (sectionId: string, fieldId: string) => {
+    if (!editable) return;
+    onChange(sectionId, fieldId, null);
   };
 
   const renderTableField = (sectionId: string, field: InspectionField) => {
@@ -786,25 +815,24 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
             <View style={[styles.signatureBox, { borderColor: theme.border }]}>
               {fieldValue ? (
                 <View style={styles.signaturePresent}>
-                  <MaterialCommunityIcons
-                    name="check-circle"
-                    size={24}
-                    color={theme.success || "#10B981"}
+                  <Image
+                    source={{ uri: fieldValue }}
+                    style={styles.signatureImage}
+                    resizeMode="contain"
                   />
-                  <Text style={[styles.signatureText, { color: theme.success || "#10B981" }]}>
-                    Signature Captured
-                  </Text>
+                  {editable && (
+                    <TouchableOpacity
+                      style={[styles.signatureRemoveButton, { backgroundColor: theme.error }]}
+                      onPress={() => handleClearSignature(sectionId, field.id)}
+                    >
+                      <MaterialCommunityIcons name="close" size={16} color="white" />
+                    </TouchableOpacity>
+                  )}
                 </View>
               ) : (
                 <TouchableOpacity
                   style={styles.signatureButton}
-                  onPress={() => {
-                    if (editable) {
-                      // In a real app, you'd open a signature capture modal
-                      // For now, just set a placeholder signature
-                      onChange(sectionId, field.id, `signature_${Date.now()}`);
-                    }
-                  }}
+                  onPress={() => handleOpenSignature(sectionId, field.id)}
                   disabled={!editable}
                 >
                   <MaterialCommunityIcons
@@ -1028,6 +1056,17 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
           editable={editable}
         />
       </View>
+
+      {signatureModalVisible && (
+        <SignatureCapture
+          visible={signatureModalVisible}
+          onClose={() => {
+            setSignatureModalVisible(false);
+            setCurrentSignatureField(null);
+          }}
+          onSave={handleSaveSignature}
+        />
+      )}
     </View>
   );
 };
@@ -1167,9 +1206,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   signaturePresent: {
-    flexDirection: "row",
+    width: "100%",
+    position: "relative",
+  },
+  signatureImage: {
+    width: "100%",
+    height: 120,
+    borderRadius: 8,
+  },
+  signatureRemoveButton: {
+    position: "absolute",
+    top: -8,
+    right: -8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
     alignItems: "center",
-    gap: 8,
   },
   signatureText: {
     fontSize: 14,
