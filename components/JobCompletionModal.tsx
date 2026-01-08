@@ -74,6 +74,11 @@ const getFieldLabel = (field: InspectionField): string => {
   return field.id;
 };
 
+const formatJobType = (jobType: string): string => {
+  // Add spaces before capital letters for camelCase/PascalCase
+  return jobType.replace(/([A-Z])/g, ' $1').trim();
+};
+
 const getStepsForJobType = (jobType: string) => {
   if (jobType === "MinimumSafetyStandard") {
     return [
@@ -807,24 +812,21 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       setFormValues({});
       const fetched = await fetchInspectionTemplates();
 
-      // Filter templates to show the appropriate versions:
-      // - Version 2 templates for Electrical, Gas, MinimumSafetyStandard
-      // - Version 3 for the new Smoke-only template (exclude legacy v2 smoke+electrical)
-      // - Version 3 for the new GasSmoke combined template
-      const filteredTemplates = fetched.filter((template) => {
-        if (template.jobType === "Smoke") {
-          // For smoke jobs, only show the new version 3 (smoke-only) template
-          return template.version >= 3;
-        } else if (template.jobType === "GasSmoke") {
-          // For Gas+Smoke combined jobs, show version 3
-          return template.version >= 3;
-        } else {
-          // For other job types, show version 2 templates
-          return template.version === 2;
-        }
+      // Show all templates sorted by jobType and version
+      // This allows technicians to choose any template regardless of job type
+      const sortedTemplates = fetched.sort((a, b) => {
+        // First sort by jobType alphabetically
+        const jobTypeCompare = a.jobType.localeCompare(b.jobType);
+        if (jobTypeCompare !== 0) return jobTypeCompare;
+        // Then by version (highest first) within same jobType
+        return (b.version || 0) - (a.version || 0);
       });
 
-      setTemplates(filteredTemplates);
+      console.log(
+        `[JobCompletionModal] Loaded ${sortedTemplates.length} templates (all templates shown)`
+      );
+
+      setTemplates(sortedTemplates);
     } catch (error: any) {
       console.error("Failed to load templates", error);
       setTemplateError(error?.message || "Unable to load inspection templates");
@@ -1228,21 +1230,13 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
                       <Text
                         style={[styles.templateJobType, { color: theme.text }]}
                       >
-                        {template.jobType}
+                        {formatJobType(template.jobType)}
                       </Text>
                     </View>
                     <Text style={[styles.templateTitle, { color: theme.text }]}>
                       {template.title}
                     </Text>
-                    <Text
-                      style={[
-                        styles.templateMeta,
-                        { color: theme.textSecondary },
-                      ]}
-                    >
-                      {`Version ${template.version}`}
-                    </Text>
-                    {template.metadata?.summary ? (
+                    {template.metadata?.summary && (
                       <Text
                         style={[
                           styles.templateSummary,
@@ -1251,7 +1245,7 @@ const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
                       >
                         {template.metadata.summary}
                       </Text>
-                    ) : null}
+                    )}
                   </TouchableOpacity>
                 );
               })}
